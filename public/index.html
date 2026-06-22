@@ -202,6 +202,11 @@ input:focus{border-color:#5048d4}
 <script>
 const socket = io();
 let myName='', myRoom='', myIdx=-1, isHost=false, selAi=0;
+
+// Rejoin room after mobile disconnect
+socket.on('connect', ()=>{
+  if(myRoom && myName) socket.emit('rejoin',{name:myName, code:myRoom});
+});
 let snapSelected=null; // {targetPi, targetCi}
 let lastState=null;
 

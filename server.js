@@ -701,6 +701,24 @@ io.on('connection', socket=>{
   socket.on('snap', ({targetPi,targetCi})=>{ const room=findRoomByPlayer(socket.id); if(room)handleSnap(room,socket.id,targetPi,targetCi); });
   socket.on('giveCard', ({ci})=>{ const room=findRoomByPlayer(socket.id); if(room)humanGiveSnapCard(room,socket.id,ci); });
 
+  // Rejoin after mobile disconnect/reconnect
+  socket.on('rejoin', ({name, code}, cb)=>{
+    const room=rooms[code];
+    if(!room){if(cb)cb({ok:false});return;}
+    const player=room.players.find(p=>p.name===name&&!p.isAI);
+    if(!player){if(cb)cb({ok:false});return;}
+    const wasHost=room.host===player.id;
+    player.id=socket.id;
+    if(wasHost) room.host=socket.id;
+    socket.join(code);
+    if(!room.started){
+      io.to(code).emit('lobby',{players:room.players.map(p=>({name:p.name,isAI:p.isAI})),host:room.host,code});
+    } else if(room.game){
+      io.to(socket.id).emit('state', stateFor(room, socket.id));
+    }
+    if(cb)cb({ok:true});
+  });
+
   socket.on('disconnect', ()=>{
     const room=findRoomByPlayer(socket.id);
     if(!room)return;

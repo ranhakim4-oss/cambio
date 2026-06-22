@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>קמביו</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh;direction:rtl}
+#app{max-width:420px;margin:0 auto;padding:12px;padding-bottom:32px}
+.screen{display:none}.screen.on{display:block}
+h1{font-size:28px;font-weight:700;margin-bottom:4px;color:#fff}
+h2{font-size:20px;font-weight:600;margin-bottom:12px;color:#fff}
+h3{font-size:16px;font-weight:600;margin-bottom:10px;color:#ddd}
+.sub{font-size:14px;color:#888;margin-bottom:20px}
+.btn{display:block;width:100%;padding:14px 16px;border-radius:12px;border:1px solid #333;background:#1a1a1a;color:#f0f0f0;font-size:16px;cursor:pointer;font-family:inherit;margin-bottom:10px;text-align:center;transition:all 0.12s;font-weight:500}
+.btn:active{transform:scale(0.97)}
+.btn.primary{background:#5048d4;color:#fff;border-color:#5048d4}
+.btn.primary:active{background:#3d38b0}
+.btn.sm{padding:11px 16px;font-size:14px;width:auto;display:inline-block;margin-bottom:0;margin-left:8px}
+.btn.danger{background:#2a1010;color:#f87171;border-color:#7f1d1d}
+.btn:disabled{opacity:0.3;pointer-events:none}
+.count-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 22px}
+.cnt{padding:18px 8px;border-radius:14px;border:1px solid #333;background:#1a1a1a;cursor:pointer;text-align:center;font-size:22px;font-weight:700;color:#fff;transition:all 0.12s}
+.cnt:active{transform:scale(0.97)}
+.cnt span{display:block;font-size:12px;font-weight:400;color:#888;margin-top:3px}
+.cnt.sel{border:2px solid #5048d4;background:#1e1b3a;color:#a89fff}
+.rules-box{margin-top:18px;padding:14px;background:#1a1a1a;border-radius:12px;border:1px solid #2a2a2a}
+.rules-box p{font-size:13px;color:#888;line-height:1.8}
+.rules-box b{color:#aaa}
+
+/* PLAYER SECTION */
+.p-section{border:1px solid #2a2a2a;border-radius:14px;padding:10px 12px;background:#141414;margin-bottom:8px;transition:border-color 0.3s,background 0.3s}
+.p-section.active{border:1.5px solid #5048d4;background:#161430}
+.p-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.p-name{font-size:14px;font-weight:600;color:#ddd;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#5048d4;display:inline-block;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* CARDS */
+.cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.card{border-radius:8px;border:1px solid #2a2a2a;background:#1e1e1e;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:6px 2px;min-height:64px;position:relative;transition:transform 0.15s,border-color 0.15s,background 0.15s}
+.card:active{transform:scale(0.93)}
+.card.pick{border:2px solid #5048d4;background:#1e1b3a}
+.card.fd{background:#1a1840}
+.card.peeking{background:#1a3020;border:2px solid #22c55e}
+.card.swapping{border:2px solid #f59e0b;background:#1a1500;animation:swapBounce 0.5s ease}
+.card.swap-selected{border:2px solid #f59e0b;background:#2a1f00}
+.card.ai-acting{border:2px solid #a78bfa;background:#1a1535;animation:aiPulse 0.6s ease}
+@keyframes swapBounce{0%{transform:scale(1)}30%{transform:scale(1.12)}70%{transform:scale(0.95)}100%{transform:scale(1)}}
+@keyframes aiPulse{0%{transform:scale(1)}40%{transform:scale(1.1)}100%{transform:scale(1)}}
+.card .cv{font-size:15px;font-weight:700;line-height:1}
+.card .cs{font-size:11px;line-height:1;margin-top:2px}
+.card.red .cv,.card.red .cs{color:#f87171}
+.card.blk .cv,.card.blk .cs{color:#f0f0f0}
+.peek-timer{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:10px;color:#22c55e;font-weight:700}
+
+/* PILES */
+.piles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.pile{border-radius:12px;border:1px solid #2a2a2a;background:#1a1a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:12px 4px;min-height:70px;transition:all 0.15s}
+.pile:active{transform:scale(0.97)}
+.pile.pick{border:1.5px solid #5048d4;background:#1e1b3a}
+.pile.highlight{border:1.5px solid #f59e0b;background:#1a1500;animation:aiPulse 0.5s ease}
+.pile-label{font-size:11px;color:#666;margin-top:5px}
+.pile-val{font-size:18px;font-weight:700;color:#f0f0f0}
+.pile-val.red{color:#f87171}
+
+/* STATUS */
+.status{background:#1a1a1a;border-radius:10px;padding:11px 14px;font-size:13px;color:#888;text-align:center;margin:8px 0;min-height:42px;display:flex;align-items:center;justify-content:center;line-height:1.5;border:1px solid #222;transition:all 0.2s}
+.status b{color:#ddd}
+.status.action{background:#1a1535;border-color:#5048d4;color:#c4b5fd}
+.status.success{background:#0f1f10;border-color:#22c55e;color:#86efac}
+.status.warn{background:#1a1500;border-color:#f59e0b;color:#fcd34d}
+.status.cambio-flash{background:#1a0a2e;border-color:#a78bfa;color:#ddd6fe;font-size:16px;font-weight:700}
+
+/* TOAST / OVERLAY */
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.8);background:#1a0a2e;border:2px solid #a78bfa;border-radius:18px;padding:20px 32px;font-size:22px;font-weight:700;color:#e9d5ff;text-align:center;z-index:999;opacity:0;pointer-events:none;transition:all 0.25s}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.toast.hide{opacity:0;transform:translate(-50%,-50%) scale(1.1)}
+
+/* ACTION LOG */
+.action-log{font-size:12px;color:#555;text-align:center;min-height:18px;margin-bottom:2px;transition:all 0.2s}
+.action-log.visible{color:#888}
+
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* RESULTS */
+.res-winner{padding:16px;background:#1a1840;border-radius:12px;text-align:center;margin-bottom:14px;border:1px solid #2a2560}
+.res-table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:14px}
+.res-table th{text-align:right;padding:7px 6px;font-weight:600;border-bottom:1px solid #2a2a2a;color:#666;font-size:12px}
+.res-table td{padding:9px 6px;border-bottom:1px solid #1e1e1e;color:#ddd}
+.res-table tr.win td{color:#a89fff;font-weight:600}
+.final-cards{display:flex;gap:6px;margin-top:6px}
+.fc{flex:1;min-height:54px;border:1px solid #2a2a2a;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1a1a1a}
+
+/* ANIMATIONS */
+@keyframes dealIn{0%{transform:translateY(-30px) scale(0.8);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
+@keyframes flyToDiscard{0%{transform:scale(1) rotate(0deg);opacity:1}60%{transform:scale(1.15) rotate(8deg);opacity:0.8}100%{transform:scale(0.7) rotate(15deg);opacity:0}}
+@keyframes drawFromDeck{0%{transform:translateX(60px) scale(0.8);opacity:0}100%{transform:translateX(0) scale(1);opacity:1}}
+@keyframes turnStart{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
+@keyframes cambioExplode{0%{transform:scale(1) rotate(0deg)}25%{transform:scale(1.2) rotate(-3deg)}50%{transform:scale(1.1) rotate(3deg)}75%{transform:scale(1.15) rotate(-2deg)}100%{transform:scale(1) rotate(0deg)}}
+@keyframes winFloat{0%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-8px) rotate(5deg)}66%{transform:translateY(-4px) rotate(-4deg)}100%{transform:translateY(0) rotate(0deg)}}
+@keyframes peekReveal{0%{transform:scaleY(0);opacity:0}60%{transform:scaleY(1.08)}100%{transform:scaleY(1);opacity:1}}
+@keyframes cardShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px) rotate(-2deg)}40%{transform:translateX(6px) rotate(2deg)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes slideInLeft{0%{transform:translateX(-40px);opacity:0}100%{transform:translateX(0);opacity:1}}
+@keyframes popIn{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+
+.card.anim-deal{animation:dealIn 0.35s ease both}
+.card.anim-draw{animation:drawFromDeck 0.3s ease both}
+.card.anim-fly{animation:flyToDiscard 0.4s ease forwards}
+.card.anim-turn{animation:turnStart 0.4s ease}
+.card.anim-shake{animation:cardShake 0.4s ease}
+.card.anim-peek{animation:peekReveal 0.3s ease both}
+.card.anim-win{animation:winFloat 1.2s ease infinite}
+.p-section.anim-cambio{animation:cambioExplode 0.6s ease}
+.pile.anim-pop{animation:popIn 0.3s ease}
+.p-section.anim-turn{animation:turnStart 0.5s ease}
+.card.dragging{opacity:0.4;transform:scale(0.95)}
+.pile.drag-over{border:2px solid #22c55e;background:#0f1f10;transform:scale(1.05)}
+.card[draggable="true"]{cursor:grab}
+@keyframes snapPulse{0%{transform:scale(1)}40%{transform:scale(1.13)}100%{transform:scale(1)}}
+.status.snap{background:#1f0a10;border-color:#f43f5e;color:#fda4af}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="s-setup" class="screen on">
+  <h1>🃏 קמביו</h1>
+  <p class="sub">משחק קלפים נגד AI</p>
+  <h3>כמה שחקנים?</h3>
+  <div class="count-grid">
+    <div class="cnt" onclick="pick(2)">2<span>אתה + AI</span></div>
+    <div class="cnt" onclick="pick(3)">3<span>אתה + 2 AI</span></div>
+    <div class="cnt" onclick="pick(4)">4<span>אתה + 3 AI</span></div>
+  </div>
+  <button class="btn primary" id="go-btn" onclick="startGame()" disabled>התחל משחק</button>
+  <div class="rules-box">
+    <p>
+      <b>7/8</b> = הצץ לקלף שלך &nbsp;|&nbsp; <b>9/10</b> = הצץ לקלף יריב<br>
+      <b>J/Q</b> = החלפה עיוורת (בין כל 2 קלפים) &nbsp;|&nbsp; <b>K שחור</b> = 2 הצצות + החלף<br>
+      <b>K אדום</b> = מינוס 1 &nbsp;|&nbsp; <b>ג'וקר</b> = 0<br>
+      הצצה = קלף נפתח ל-2 שניות · הכי נמוך מנצח
+    </p>
+  </div>
+</div>
+
+<div id="s-game" class="screen">
+  <div class="action-log" id="alog"></div>
+  <div id="game-body"></div>
+  <div class="status" id="st">...</div>
+  <div class="acts" id="acts"></div>
+</div>
+
+<div id="s-res" class="screen">
+  <h2>סיום משחק</h2>
+  <div id="res-body"></div>
+  <button class="btn primary" onclick="reset()">משחק חדש</button>
+</div>
+
+</div>
+
+<!-- toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+let SEL=0, G={};
+const SUITS=['♠','♥','♦','♣'], VALS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const PEEK_MS=2000;
+
+function pts(c){
+  if(!c)return 0; if(c.jk)return 0;
+  if(c.v==='K'&&(c.s==='♥'||c.s==='♦'))return -1;
+  if(c.v==='A')return 1; if(c.v==='J')return 11; if(c.v==='Q')return 12; if(c.v==='K')return 13;
+  return parseInt(c.v);
+}
+function isRed(c){return c&&!c.jk&&(c.s==='♥'||c.s==='♦')}
+function isSp(c){if(!c||c.jk)return false; return['7','8','9','10','J','Q','K'].includes(c.v)}
+function shuffle(a){let b=[...a];for(let i=b.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+function buildDeck(){
+  let d=[];
+  for(let s of SUITS)for(let v of VALS)d.push({v,s,jk:false});
+  d.push({v:'JK',s:'',jk:true}); d.push({v:'JK',s:'',jk:true});
+  return shuffle(d);
+}
+function lbl(c){
+  if(!c)return{m:'',s:'',r:false};
+  if(c.jk)return{m:'JK',s:'★',r:false};
+  return{m:c.v,s:c.s,r:isRed(c)};
+}
+function cardName(c){if(!c)return'?'; if(c.jk)return"ג'וקר"; let l=lbl(c);return l.m+l.s;}
+
+// UI helpers
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on')}
+function st(msg,cls=''){
+  let e=document.getElementById('st');
+  if(!e)return;
+  e.innerHTML=msg;
+  e.className='status'+(cls?' '+cls:'');
+}
+function alog(msg){
+  let e=document.getElementById('alog');
+  if(!e)return;
+  e.textContent=msg;
+  e.className='action-log visible';
+  setTimeout(()=>{if(e.textContent===msg)e.className='action-log'},3000);
+}
+function showToast(msg, durationMs=1600){
+  let t=document.getElementById('toast');
+  t.innerHTML=msg; t.className='toast show';
+  setTimeout(()=>{t.className='toast hide'; setTimeout(()=>t.className='toast',300);},durationMs);
+}
+// Animate a card flying from one position to another on screen
+function flyCard(fromEl, toEl, label, color, cb){
+  if(!fromEl||!toEl){if(cb)cb();return;}
+  let fromR=fromEl.getBoundingClientRect();
+  let toR=toEl.getBoundingClientRect();
+
+  // Create flying card element
+  let fly=document.createElement('div');
+  fly.style.cssText=[
+    'position:fixed',
+    'z-index:9999',
+    'width:'+fromR.width+'px',
+    'height:'+fromR.height+'px',
+    'left:'+fromR.left+'px',
+    'top:'+fromR.top+'px',
+    'background:#2a2560',
+    'border:2px solid #a78bfa',
+    'border-radius:8px',
+    'display:flex','flex-direction:column',
+    'align-items:center','justify-content:center',
+    'font-size:14px','font-weight:700',
+    'color:'+(color||'#f0f0f0'),
+    'pointer-events:none',
+    'transition:left 0.45s cubic-bezier(0.4,0,0.2,1),top 0.45s cubic-bezier(0.4,0,0.2,1),transform 0.45s ease,opacity 0.45s ease',
+    'box-shadow:0 4px 24px rgba(160,130,255,0.4)',
+  ].join(';');
+  fly.textContent=label||'🂠';
+  document.body.appendChild(fly);
+
+  // Trigger flight after paint
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      fly.style.left=(toR.left+(toR.width-fromR.width)/2)+'px';
+      fly.style.top=(toR.top+(toR.height-fromR.height)/2)+'px';
+      fly.style.transform='scale(1.2) rotate(8deg)';
+      fly.style.opacity='0.85';
+      setTimeout(()=>{
+        fly.style.transform='scale(0.7)';
+        fly.style.opacity='0';
+        setTimeout(()=>{
+          fly.remove();
+          if(cb)cb();
+        },150);
+      },420);
+    });
+  });
+}
+
+function flashCards(pairs, cls, durationMs, cb){
+  // pairs = [{pi,ci}]
+  pairs.forEach(({pi,ci})=>{
+    let el=document.getElementById('card-'+pi+'-'+ci);
+    if(el)el.classList.add(cls);
+  });
+  setTimeout(()=>{
+    pairs.forEach(({pi,ci})=>{
+      let el=document.getElementById('card-'+pi+'-'+ci);
+      if(el)el.classList.remove(cls);
+    });
+    if(cb)cb();
+  }, durationMs);
+}
+function highlightPile(which, durationMs){
+  let el=document.getElementById('pile-'+which);
+  if(el){el.classList.add('highlight');setTimeout(()=>el.classList.remove('highlight'),durationMs);}
+}
+
+function pick(n){
+  SEL=n;
+  document.querySelectorAll('.cnt').forEach((c,i)=>c.classList.toggle('sel',i===n-2));
+  document.getElementById('go-btn').disabled=false;
+}
+
+function startGame(){
+  let deck=buildDeck(), players=[];
+  for(let i=0;i<SEL;i++)players.push({name:i===0?'אתה':'AI '+i,human:i===0,cards:[deck.pop(),deck.pop(),deck.pop(),deck.pop()],peeking:[false,false,false,false]});
+  G={deck,disc:[],players,np:SEL,cur:0,phase:'peek',drawn:null,peeks:2,spData:{},cambio:false,cambioWho:-1,turnsAfter:0,over:false,highlight:{},snapUsed:false,aiSnapUsed:false,snapData:{}};
+  G.disc.push(G.deck.pop());
+  show('s-game'); render();
+  // animate deal
+  setTimeout(()=>{
+    document.querySelectorAll('.card').forEach((el,i)=>{
+      el.style.animationDelay=(i*0.06)+'s';
+      el.classList.add('anim-deal');
+      setTimeout(()=>el.classList.remove('anim-deal'),(i*60)+400);
+    });
+  },50);
+  st('התחלנו! הצץ ב-2 קלפים הקרובים אליך. הקלף ייפתח ל-2 שניות.','action');
+}
+
+function doPeek(pi,ci,afterCb){
+  G.players[pi].peeking[ci]=true;
+  render();
+  // animate the peeked card
+  setTimeout(()=>{
+    let el=document.getElementById('card-'+pi+'-'+ci);
+    if(el){el.classList.add('anim-peek');setTimeout(()=>el.classList.remove('anim-peek'),350);}
+  },30);
+  let secs=2;
+  let tid=setInterval(()=>{
+    secs--;
+    let el=document.getElementById('peek-timer-'+pi+'-'+ci);
+    if(el)el.textContent=secs>0?secs+'s':'';
+    if(secs<=0){
+      clearInterval(tid);
+      G.players[pi].peeking[ci]=false;
+      render();
+      if(afterCb)afterCb();
+    }
+  },1000);
+}
+
+function canPickCard(pi,ci){
+  let ph=G.phase;
+  // if this player called cambio, their cards are locked
+  if(G.cambio&&G.cambioWho===pi)return false;
+  if(ph==='peek'&&pi===0&&(ci===0||ci===1))return true;
+  if(ph==='replace'&&pi===0)return true;
+  if(ph==='sp-peek-self'&&pi===0)return true;
+  if(ph==='sp-peek-other'&&pi!==0)return true;
+  if(ph==='sp-swap-pick1')return true;
+  if(ph==='sp-swap-pick2'){let s=G.spData;if(pi===s.p1&&ci===s.c1)return false;return true;}
+  if(ph==='snap-target'&&G.snapData&&pi!==G.snapData.fromPi)return true;
+  if(ph==='snap-give'&&pi===0&&G.players[0].cards[ci]!==null)return true;
+  if(ph==='bk-peek1')return true;
+  if(ph==='bk-peek2'){let s=G.spData;if(pi===s.p1&&ci===s.c1)return false;return true;}
+  if(ph==='bk-swap-pick1')return true;
+  if(ph==='bk-swap-pick2'){let s=G.spData;if(pi===s.sp1&&ci===s.sc1)return false;return true;}
+  return false;
+}
+
+function clickCard(pi,ci){
+  if(G.over)return;
+  let ph=G.phase, p=G.players[pi];
+
+  if(ph==='peek'&&pi===0){
+    if(ci>1||G.players[0].peeking[ci])return;
+    G.peeks--;
+    let remaining=G.peeks;
+    st('מציץ...','action');
+    doPeek(0,ci,()=>{
+      if(remaining===0){G.phase='draw';st('הצצת ב-2 קלפים. תורך — שלוף מהחפיסה או מהזרוקים.');renderActs();}
+      else st('הצצת בקלף הראשון. עכשיו הצץ בקלף השני.','action');
+    });
+    return;
+  }
+
+  if(ph==='replace'&&pi===0){
+    let oldCard=p.cards[ci];
+    let repCardEl=document.getElementById('card-0-'+ci);
+    let repDiscEl=document.getElementById('pile-disc');
+    let repDeckEl=document.getElementById('pile-deck');
+    flyCard(repDiscEl,repCardEl,cardName(G.drawn),lbl(G.drawn).r?'#f87171':'#f0f0f0',null);
+    flyCard(repCardEl,repDiscEl,cardName(oldCard),lbl(oldCard).r?'#f87171':'#f0f0f0',()=>{
+      G.disc.push(oldCard); p.cards[ci]=G.drawn; G.drawn=null;
+      alog('החלפת קלף '+(ci+1)+' שלך');
+      endTurn();
+    });
+    return;
+  }
+
+  if(ph==='sp-peek-self'&&pi===0){
+    let c=p.cards[ci];
+    st('מציץ בקלף שלך...','action');
+    doPeek(0,ci,()=>{
+      alog('הצצת: קלף '+(ci+1)+' שלך = '+cardName(c));
+      st('הצצת בקלף שלך','success');
+      endTurn();
+    });
+    return;
+  }
+
+  if(ph==='sp-peek-other'&&pi!==0){
+    let c=G.players[pi].cards[ci];
+    st('מציץ בקלף של '+G.players[pi].name+'...','action');
+    doPeek(pi,ci,()=>{
+      alog('הצצת: קלף '+(ci+1)+' של '+G.players[pi].name+' = '+cardName(c));
+      st('הצצת בקלף של '+G.players[pi].name,'success');
+      endTurn();
+    });
+    return;
+  }
+
+  if(ph==='sp-swap-pick1'){
+    G.spData={p1:pi,c1:ci};
+    G.phase='sp-swap-pick2';
+    st('בחרת קלף '+(ci+1)+' של '+G.players[pi].name+'. בחר קלף שני.','warn');
+    render(); return;
+  }
+  if(ph==='sp-swap-pick2'){
+    let s=G.spData;
+    // animate: fly card from p1 to target and vice versa
+    let el1=document.getElementById('card-'+s.p1+'-'+s.c1);
+    let el2=document.getElementById('card-'+pi+'-'+ci);
+    let c1=G.players[s.p1].cards[s.c1], c2=G.players[pi].cards[ci];
+    let l1=lbl(c1), l2=lbl(c2);
+    flyCard(el1,el2,l1.m+l1.s,l1.r?'#f87171':'#f0f0f0',null);
+    flyCard(el2,el1,l2.m+l2.s,l2.r?'#f87171':'#f0f0f0',()=>{
+      let tmp=G.players[s.p1].cards[s.c1];
+      G.players[s.p1].cards[s.c1]=G.players[pi].cards[ci];
+      G.players[pi].cards[ci]=tmp;
+      alog('החלפת קלף '+(s.c1+1)+' של '+G.players[s.p1].name+' עם קלף '+(ci+1)+' של '+G.players[pi].name+'!');
+      st('החלפה עיוורת בוצעה!','success');
+      endTurn();
+    });
+    return;
+  }
+
+  if(ph==='bk-peek1'){
+    let c=G.players[pi].cards[ci];
+    st('King שחור: מציץ בהצצה הראשונה...','action');
+    G.spData.p1=pi; G.spData.c1=ci;
+    doPeek(pi,ci,()=>{
+      alog('הצצה 1: קלף '+(ci+1)+' של '+G.players[pi].name+' = '+cardName(c));
+      st('עכשיו הצץ בקלף שני (כל שחקן).','action');
+      G.phase='bk-peek2'; render();
+    });
+    return;
+  }
+
+  if(ph==='bk-peek2'){
+    let s=G.spData;
+    if(pi===s.p1&&ci===s.c1)return;
+    let c=G.players[pi].cards[ci];
+    st('King שחור: מציץ בהצצה השנייה...','action');
+    doPeek(pi,ci,()=>{
+      alog('הצצה 2: קלף '+(ci+1)+' של '+G.players[pi].name+' = '+cardName(c));
+      st('עכשיו החלף כל 2 קלפים שתרצה.','action');
+      G.phase='bk-swap-pick1'; render();
+    });
+    return;
+  }
+
+  if(ph==='bk-swap-pick1'){
+    G.spData.sp1=pi; G.spData.sc1=ci;
+    G.phase='bk-swap-pick2';
+    st('בחרת קלף '+(ci+1)+' של '+G.players[pi].name+'. בחר קלף שני.','warn');
+    render(); return;
+  }
+  if(ph==='bk-swap-pick2'){
+    let s=G.spData;
+    if(pi===s.sp1&&ci===s.sc1)return;
+    let el1=document.getElementById('card-'+s.sp1+'-'+s.sc1);
+    let el2=document.getElementById('card-'+pi+'-'+ci);
+    let c1=G.players[s.sp1].cards[s.sc1], c2=G.players[pi].cards[ci];
+    let l1=lbl(c1), l2=lbl(c2);
+    flyCard(el1,el2,l1.m+l1.s,l1.r?'#f87171':'#f0f0f0',null);
+    flyCard(el2,el1,l2.m+l2.s,l2.r?'#f87171':'#f0f0f0',()=>{
+      let tmp=G.players[s.sp1].cards[s.sc1];
+      G.players[s.sp1].cards[s.sc1]=G.players[pi].cards[ci];
+      G.players[pi].cards[ci]=tmp;
+      alog('King שחור: החלפת קלף '+(s.sc1+1)+' של '+G.players[s.sp1].name+' עם קלף '+(ci+1)+' של '+G.players[pi].name);
+      st('King שחור בוצע!','success');
+      endTurn();
+    });
+    return;
+  }
+
+  // SNAP-GIVE: give one of your cards to the snapped player
+  // snapper loses 1 card (goes from N to N-1), target gains 1 (goes from N-1 back to N)
+  if(ph==='snap-give'&&pi===0){
+    let sd=G.snapData;
+    let givenCard=G.players[0].cards[ci];
+    if(!givenCard)return;
+    // animate card flying from human to target
+    let sgFromEl=document.getElementById('card-0-'+ci);
+    let sgToEl=document.querySelector('#game-body .p-section:nth-child('+(sd.targetPi+1)+') .cards-row .card');
+    flyCard(sgFromEl,sgToEl||sgFromEl,cardName(givenCard),lbl(givenCard).r?'#f87171':'#f0f0f0',null);
+
+    // remove card from snapper (they keep one less)
+    G.players[0].cards.splice(ci,1);
+    G.players[0].peeking.splice(ci,1);
+    // give to target (they go back to previous count)
+    G.players[sd.targetPi].cards.push(givenCard);
+    alog('נתת '+cardName(givenCard)+' ל-'+G.players[sd.targetPi].name);
+    st('הדבקה הושלמה!','success');
+    G.phase='draw'; G.snapData={};
+    if(sd.wasAiTurn){
+      render();
+      setTimeout(()=>st('תור של '+G.players[G.cur].name+' ממשיך...'),300);
+    } else {
+      render(); renderActs();
+    }
+    return;
+  }
+}
+
+function clickPile(from){
+  if(G.phase!=='draw'||G.cur!==0||G.over)return;
+  if(from==='deck'){G.drawn=G.deck.pop();}
+  else{if(!G.disc.length)return; G.drawn=G.disc.pop();}
+  let l=lbl(G.drawn);
+  st('שלפת: <b>'+(G.drawn.jk?"ג'וקר":l.m+l.s)+'</b>. בחר פעולה.');
+  G.phase='drawn'; renderActs(); render();
+  // animate the pile
+  setTimeout(()=>{
+    let pile=document.getElementById('pile-'+from);
+    if(pile){pile.classList.add('anim-pop');setTimeout(()=>pile.classList.remove('anim-pop'),350);}
+    // animate first human card as "drawn card arrived"
+    let cards=document.querySelectorAll('#cards-0 .card, .p-section .cards-row .card');
+  },50);
+}
+
+function useSpecial(){
+  let c=G.drawn;
+  let usFromEl=document.getElementById('pile-deck');
+  let usDiscEl=document.getElementById('pile-disc');
+  flyCard(usFromEl,usDiscEl,cardName(c),lbl(c).r?'#f87171':'#f0f0f0',null);
+  G.disc.push(c); G.drawn=null;
+  if(c.v==='7'||c.v==='8'){G.phase='sp-peek-self';st('בחר קלף שלך להציץ.','action');}
+  else if(c.v==='9'||c.v==='10'){G.phase='sp-peek-other';st('בחר קלף של יריב להציץ.','action');}
+  else if(c.v==='J'||c.v==='Q'){G.phase='sp-swap-pick1';G.spData={};st('בחר קלף ראשון להחלפה עיוורת (מכל שחקן).','warn');}
+  else if(c.v==='K'){
+    if(isRed(c)){alog('King אדום = −1');st('King אדום נזרק.','success');endTurn();}
+    else{G.phase='bk-peek1';G.spData={};st('King שחור: הצץ בקלף ראשון (כל שחקן).','action');}
+  }
+  renderActs(); render();
+}
+
+function doReplace(){G.phase='replace';st('בחר קלף שלך להחליף.','action');renderActs();render();}
+function doDiscard(){
+  let ddEl=document.getElementById('pile-deck');
+  let ddDiscEl=document.getElementById('pile-disc');
+  let ddCard=G.drawn;
+  flyCard(ddEl,ddDiscEl,cardName(ddCard),lbl(ddCard).r?'#f87171':'#f0f0f0',()=>{
+    G.disc.push(ddCard); G.drawn=null;
+    alog('זרקת את הקלף');
+    st('זרקת.');
+    endTurn();
+  });
+}
+function doCambio(){
+  G.cambio=true; G.cambioWho=0;
+  showToast('🏁 קמביו!', 1800);
+  st('<b>קמביו!</b> לכולם עוד תור אחד.','cambio-flash');
+  alog('קראת קמביו!');
+  // animate player section
+  let sec=document.querySelector('.p-section.active');
+  if(sec){sec.classList.add('anim-cambio');setTimeout(()=>sec.classList.remove('anim-cambio'),650);}
+  G.phase='draw'; advanceTurn();
+}
+
+function endTurn(){
+  if(G.cambio){G.turnsAfter++;if(G.turnsAfter>=G.np-1){endGame();return;}}
+  advanceTurn();
+}
+function advanceTurn(){
+  G.cur=(G.cur+1)%G.np; G.drawn=null; G.spData={}; G.phase='draw'; G.snapUsed=false; G.aiSnapUsed=false; G.snapData={}; G.snapSelected=null; render();
+  let curPlayer=G.players[G.cur];
+  // auto-cambio if player has 0 cards
+  if(curPlayer.cards.length===0&&!G.cambio){
+    G.cambio=true; G.cambioWho=G.cur;
+    showToast((G.cur===0?'אתה':curPlayer.name)+'\n0 קלפים — קמביו!',2000);
+    alog((G.cur===0?'אתה':curPlayer.name)+' הגיע ל-0 קלפים — קמביו אוטומטי!');
+    st(curPlayer.name+' — 0 קלפים! <b>קמביו אוטומטי!</b>','cambio-flash');
+    setTimeout(()=>advanceTurn(),1200);
+    return;
+  }
+  if(G.cur===0){
+    st('התורך! שלוף קלף, או גרור קלף לערימת הזרוקים כדי להדביק.');
+    renderActs();
+    // animate human player section
+    setTimeout(()=>{
+      let sec=document.querySelector('.p-section.active');
+      if(sec){sec.classList.add('anim-turn');setTimeout(()=>sec.classList.remove('anim-turn'),500);}
+    },50);
+  }
+  else{st('תור של '+curPlayer.name+'...');renderActs();setTimeout(aiTurn,1200);}
+}
+
+function aiTurn(){
+  if(G.over)return;
+  let ai=G.players[G.cur];
+
+  // AI snap check: wait 2 seconds to give human a chance to snap first
+  setTimeout(()=>{
+    if(G.over)return;
+    if(!G.aiSnapUsed&&G.disc.length>0){
+      let topDisc=G.disc[G.disc.length-1];
+      for(let oi=0;oi<G.np;oi++){
+        if(oi===G.cur)continue;
+        for(let ci=0;ci<G.players[oi].cards.length;ci++){
+          let c=G.players[oi].cards[ci];
+          if(c&&!c.jk&&!topDisc.jk&&c.v===topDisc.v&&Math.random()<0.6&&!(G.cambio&&G.cambioWho===oi)){
+            G.aiSnapUsed=true;
+            G.snapData={targetPi:oi,targetCi:ci};
+            setTimeout(()=>{
+              let targetCard=G.players[oi].cards[ci];
+              if(!targetCard){afterAiSnap();return;}
+              flashCards([{pi:oi,ci}],'snap-target',600,()=>{
+                G.disc.push(targetCard);
+                G.players[oi].cards.splice(ci,1);
+                G.players[oi].peeking.splice(ci,1);
+                alog(ai.name+' הדביק! '+cardName(targetCard)+' מ-'+G.players[oi].name);
+                st(ai.name+' הדביק על '+G.players[oi].name+'!','snap');
+                showToast('⚡ '+ai.name+'\nהדביק!',1200);
+                setTimeout(()=>{
+                  let worst=0,worstPts=pts(ai.cards[0]);
+                  for(let k=1;k<ai.cards.length;k++){if(ai.cards[k]&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}}
+                  let givenCard=ai.cards[worst];
+                  ai.cards.splice(worst,1);
+                  ai.peeking.splice(worst,1);
+                  G.players[oi].cards.push(givenCard);
+                  alog(ai.name+' נתן '+cardName(givenCard)+' ל-'+G.players[oi].name);
+                  render();
+                  setTimeout(afterAiSnap,700);
+                },1000);
+                render();
+              });
+            },400);
+            return;
+          }
+        }
+      }
+    }
+    aiDraw();
+  }, 2000);
+}
+
+function afterAiSnap(){
+  if(G.cambio&&G.cambioWho!==G.cur){G.turnsAfter++;if(G.turnsAfter>=G.np-1){endGame();return;}}
+  advanceTurn();
+}
+
+function aiDraw(){
+  if(G.over)return;
+  let ai=G.players[G.cur], drawn;
+  let useDiscard=G.disc.length>0&&pts(G.disc[G.disc.length-1])<=3;
+
+  if(useDiscard){
+    drawn=G.disc.pop();
+    highlightPile('disc',500);
+    alog(ai.name+' לקח מערימת הזרוקים');
+  } else {
+    drawn=G.deck.pop();
+    highlightPile('deck',500);
+  }
+
+  setTimeout(()=>{
+    if(!drawn){afterAiAction();return;}
+
+    // handle special cards
+    if(isSp(drawn)){
+      let spFromEl=document.getElementById('pile-deck');
+      let spToEl=document.getElementById('pile-disc');
+      flyCard(spFromEl,spToEl,cardName(drawn),lbl(drawn).r?'#f87171':'#f0f0f0',null);
+      G.disc.push(drawn);
+
+      // 7/8 — peek own card silently (AI already knows, just pick lowest unknown and log)
+      if(drawn.v==='7'||drawn.v==='8'){
+        let ci=Math.floor(Math.random()*ai.cards.length);
+        alog(ai.name+' הציץ בקלף '+(ci+1)+' שלו ('+drawn.v+')');
+        st(ai.name+' הציץ בקלף שלו.');
+        afterAiAction();
+
+      // 9/10 — peek human card silently (no reveal animation for human)
+      } else if(drawn.v==='9'||drawn.v==='10'){
+        let hci=Math.floor(Math.random()*G.players[0].cards.length);
+        let c=G.players[0].cards[hci];
+        alog(ai.name+' הציץ בקלף '+(hci+1)+' שלך! ('+drawn.v+')');
+        st(ai.name+' הציץ באחד הקלפים שלך...','warn');
+        afterAiAction();
+
+      // J/Q — blind swap any 2 cards from any players
+      } else if(drawn.v==='J'||drawn.v==='Q'){
+        // pick worst card from any player and best from another
+        let worst=0,worstPts=-99,worstPi=G.cur;
+        let best2=0,best2Pts=999,best2Pi=-1;
+        for(let oi=0;oi<G.np;oi++){
+          for(let k=0;k<G.players[oi].cards.length;k++){
+            let c=G.players[oi].cards[k];if(!c)continue;
+            let pp=pts(c);
+            if(oi===G.cur&&pp>worstPts){worstPts=pp;worst=k;worstPi=oi;}
+            if(oi!==G.cur&&pp<best2Pts&&!(G.cambio&&G.cambioWho===oi)){best2Pts=pp;best2=k;best2Pi=oi;}
+          }
+        }
+        if(best2Pi===-1){afterAiAction();return;}
+        let aiEl1=document.getElementById('card-'+worstPi+'-'+worst);
+        let aiEl2=document.getElementById('card-'+best2Pi+'-'+best2);
+        let ac1=G.players[worstPi].cards[worst], ac2=G.players[best2Pi].cards[best2];
+        let al1=lbl(ac1), al2=lbl(ac2);
+        flyCard(aiEl1,aiEl2,al1.m+al1.s,al1.r?'#f87171':'#f0f0f0',null);
+        flyCard(aiEl2,aiEl1,al2.m+al2.s,al2.r?'#f87171':'#f0f0f0',()=>{
+          let tmp=G.players[worstPi].cards[worst];
+          G.players[worstPi].cards[worst]=G.players[best2Pi].cards[best2];
+          G.players[best2Pi].cards[best2]=tmp;
+          alog(ai.name+' החליף עיוור: קלף '+(worst+1)+' שלו ↔ קלף '+(best2+1)+' של '+G.players[best2Pi].name);
+          st(ai.name+' ביצע החלפה עיוורת!','warn');
+          afterAiAction();
+        });
+
+      // K red — replace AI's highest card with K red (K red = -1, best card)
+      } else if(drawn.v==='K'&&(drawn.s==='♥'||drawn.s==='♦')){
+        // find highest scoring card to replace
+        let worst=0,worstPts=pts(ai.cards[0])||0;
+        for(let k=1;k<ai.cards.length;k++){if(ai.cards[k]&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}}
+        // remove last disc (the K red we just pushed) and do replace
+        G.disc.pop();
+        let krFromEl=document.getElementById('card-'+G.cur+'-'+worst);
+        let krToEl=document.getElementById('pile-disc');
+        flyCard(krFromEl,krToEl,cardName(ai.cards[worst]),lbl(ai.cards[worst]).r?'#f87171':'#f0f0f0',null);
+        setTimeout(()=>{
+          G.disc.push(ai.cards[worst]);
+          ai.cards[worst]=drawn;
+          alog(ai.name+' החליף קלף '+(worst+1)+' ('+cardName(G.disc[G.disc.length-1])+') עם King אדום!');
+          st(ai.name+' שם King אדום במקום קלף גבוה.','success');
+          afterAiAction();
+        },500);
+
+      // K black — peek any 2 cards, then swap any 2
+      } else if(drawn.v==='K'){
+        // pick 2 random cards from any players to peek
+        let allSlots=[];
+        for(let oi=0;oi<G.np;oi++)for(let k=0;k<G.players[oi].cards.length;k++)if(G.players[oi].cards[k])allSlots.push({pi:oi,ci:k});
+        let s1=allSlots[Math.floor(Math.random()*allSlots.length)];
+        let s2=allSlots.filter(s=>!(s.pi===s1.pi&&s.ci===s1.ci))[Math.floor(Math.random()*(allSlots.length-1))];
+        alog(ai.name+' — King שחור: מציץ ב-2 קלפים');
+        st(ai.name+' — King שחור!','warn');
+        // silent peek (no reveal for human unless it's their card peeked by themselves)
+        setTimeout(()=>{
+          // now swap: AI worst vs lowest opponent card
+          let worstK=0,worstKPts=pts(ai.cards[0])||0;
+          for(let k=1;k<ai.cards.length;k++){if(ai.cards[k]&&pts(ai.cards[k])>worstKPts){worstKPts=pts(ai.cards[k]);worstK=k;}}
+          let bestOp=null,bestOpPts=999;
+          for(let oi=0;oi<G.np;oi++){
+            if(oi===G.cur)continue;
+            if(G.cambio&&G.cambioWho===oi)continue;
+            for(let k=0;k<G.players[oi].cards.length;k++){
+              let c=G.players[oi].cards[k];if(!c)continue;
+              if(pts(c)<bestOpPts){bestOpPts=pts(c);bestOp={pi:oi,ci:k};}
+            }
+          }
+          if(!bestOp){afterAiAction();return;}
+          let bkEl1=document.getElementById('card-'+G.cur+'-'+worstK);
+          let bkEl2=document.getElementById('card-'+bestOp.pi+'-'+bestOp.ci);
+          let bkc1=ai.cards[worstK], bkc2=G.players[bestOp.pi].cards[bestOp.ci];
+          let bkl1=lbl(bkc1), bkl2=lbl(bkc2);
+          flyCard(bkEl1,bkEl2,bkl1.m+bkl1.s,bkl1.r?'#f87171':'#f0f0f0',null);
+          flyCard(bkEl2,bkEl1,bkl2.m+bkl2.s,bkl2.r?'#f87171':'#f0f0f0',()=>{
+            let tmp=ai.cards[worstK];
+            ai.cards[worstK]=G.players[bestOp.pi].cards[bestOp.ci];
+            G.players[bestOp.pi].cards[bestOp.ci]=tmp;
+            alog(ai.name+' — King שחור: החליף קלף '+(worstK+1)+' שלו עם קלף '+(bestOp.ci+1)+' של '+G.players[bestOp.pi].name);
+            afterAiAction();
+          });
+        },800);
+      }
+      render();
+      return;
+    }
+
+    // regular card: replace highest or discard
+    let p=pts(drawn), best=0, bestPts=pts(ai.cards[0])||0;
+    for(let i=1;i<ai.cards.length;i++){if(ai.cards[i]&&pts(ai.cards[i])>bestPts){bestPts=pts(ai.cards[i]);best=i;}}
+
+    if(p<bestPts){
+      let rpEl=document.getElementById('card-'+G.cur+'-'+best);
+      let discEl2=document.getElementById('pile-disc');
+      flyCard(rpEl,discEl2,cardName(ai.cards[best]),'#f0f0f0',()=>{
+        G.disc.push(ai.cards[best]); ai.cards[best]=drawn;
+        alog(ai.name+' החליף קלף '+(best+1)+' ('+cardName(G.disc[G.disc.length-1])+'→'+cardName(drawn)+')');
+        st(ai.name+' החליף קלף.');
+        afterAiAction();
+      });
+    } else {
+      let aiDiscFromEl=document.getElementById('pile-deck');
+      let aiDiscToEl=document.getElementById('pile-disc');
+      flyCard(aiDiscFromEl,aiDiscToEl,cardName(drawn),lbl(drawn).r?'#f87171':'#f0f0f0',null);
+      G.disc.push(drawn);
+      alog(ai.name+' זרק '+cardName(drawn));
+      st(ai.name+' זרק.');
+      afterAiAction();
+    }
+    render();
+  }, 400);
+}
+
+function afterAiAction(){
+  let ai=G.players[G.cur];
+  let total=ai.cards.reduce((s,c)=>s+pts(c),0);
+  if(!G.cambio&&total<=5&&Math.random()<0.55){
+    G.cambio=true; G.cambioWho=G.cur;
+    setTimeout(()=>{
+      showToast('🏁 '+ai.name+'\nקמביו!', 2000);
+      alog(ai.name+' קרא קמביו!');
+      st(ai.name+' קרא <b>קמביו!</b>','cambio-flash');
+      setTimeout(()=>advanceTurn(),1000);
+    },300);
+    render(); return;
+  }
+  setTimeout(()=>{
+    if(G.cambio&&G.cambioWho!==G.cur){G.turnsAfter++;if(G.turnsAfter>=G.np-1){endGame();return;}}
+    advanceTurn();
+  },500);
+  render();
+}
+
+function endGame(){
+  G.over=true;
+  let scores=G.players.map((p,i)=>({name:p.name,score:p.cards.reduce((s,c)=>s+pts(c),0),cambio:G.cambioWho===i,cards:p.cards}));
+  let min=Math.min(...scores.map(s=>s.score));
+  let wins=scores.filter(s=>s.score===min).map(s=>s.name);
+  showToast('🏆 '+wins.join(', ')+'!', 2500);
+  let html=`<div class="res-winner"><div style="font-size:12px;color:#888;margin-bottom:5px">מנצח</div><div style="font-size:22px;font-weight:700">${wins.join(', ')} 🏆</div></div>`;
+  html+=`<table class="res-table"><tr><th>שחקן</th><th>ניקוד</th><th></th></tr>`;
+  scores.sort((a,b)=>a.score-b.score).forEach(s=>{html+=`<tr class="${s.score===min?'win':''}"><td>${s.name}${s.cambio?' (קמביו)':''}</td><td>${s.score}</td><td>${s.score===min?'🏆':''}</td></tr>`;});
+  html+='</table><h3>קלפים סופיים</h3>';
+  scores.forEach(s=>{
+    html+=`<div style="margin-bottom:12px"><div style="font-size:12px;color:#666;margin-bottom:6px">${s.name}</div><div class="final-cards">`;
+    s.cards.forEach(c=>{let l=lbl(c);let col=l.r?'#f87171':'#f0f0f0';html+=`<div class="fc"><span style="font-size:14px;font-weight:700;color:${col}">${c.jk?'JK':l.m}</span><span style="font-size:10px;color:${col}">${c.jk?'★':l.s}</span></div>`;});
+    html+='</div></div>';
+  });
+  document.getElementById('res-body').innerHTML=html;
+  render();
+  // animate winning cards
+  setTimeout(()=>{
+    document.querySelectorAll('.fc').forEach((el,i)=>{
+      el.style.animationDelay=(i*0.1)+'s';
+      el.classList.add('anim-win');
+    });
+  },200);
+  setTimeout(()=>show('s-res'),1800);
+}
+
+function render(){
+  let gb=document.getElementById('game-body'); if(!gb)return; gb.innerHTML='';
+  for(let pi=0;pi<G.np;pi++){
+    let p=G.players[pi], active=G.cur===pi;
+    let div=document.createElement('div');
+    div.className='p-section'+(active?' active':'');
+
+    let cardCount=p.cards.length;
+    let countColor=cardCount<=2?'#f87171':cardCount<=3?'#fcd34d':'#888';
+    let head=document.createElement('div');
+    head.className='p-head';
+    head.innerHTML=(active?'<span class="dot"></span>':'')+
+      '<span class="p-name">'+p.name+(p.human?'':' 🤖')+'</span>'+
+      '<span style="font-size:12px;padding:2px 8px;border-radius:20px;background:#222;color:'+countColor+'">'+cardCount+' קלפים</span>';
+    div.appendChild(head);
+
+    let row=document.createElement('div');
+    row.className='cards-row';
+    for(let ci=0;ci<p.cards.length;ci++){
+      let c=p.cards[ci];
+      if(!c)continue;
+      let peeking=p.peeking[ci]||false;
+      let showCard=peeking||G.over;
+      let isLocked=G.cambio&&G.cambioWho===pi&&!G.over;
+      let isSwap1=(G.phase==='sp-swap-pick2'&&G.spData.p1===pi&&G.spData.c1===ci)||
+                  (G.phase==='bk-swap-pick2'&&G.spData.sp1===pi&&G.spData.sc1===ci);
+      let isSnapSel=G.snapSelected&&G.snapSelected.pi===pi&&G.snapSelected.ci===ci;
+      let pickable=canPickCard(pi,ci)&&!peeking;
+      let canSnap=!isLocked&&!G.over&&G.disc.length>0&&!G.snapUsed;
+      // snap only when no other action is pending for this card
+      let hasAction=canPickCard(pi,ci);
+      let useSnap=canSnap&&!hasAction;
+      let l=lbl(c);
+
+      let card=document.createElement('div');
+      card.id='card-'+pi+'-'+ci;
+
+      if(!showCard){
+        card.className='card fd'+(pickable?' pick':'')+(isSwap1?' swap-selected':'')+(isLocked?' locked':'')+(isSnapSel?' swap-selected':'');
+        card.innerHTML='<span style="font-size:18px;opacity:0.5">'+(isLocked?'🔒':'🂠')+'</span>';
+      } else {
+        let cls='card'+(G.over?'':' peeking')+(l.r?' red':' blk');
+        card.className=cls;
+        card.innerHTML='<span class="cv">'+(c.jk?'JK':l.m)+'</span><span class="cs">'+(c.jk?'★':l.s)+'</span>'+
+          (peeking?'<span class="peek-timer" id="peek-timer-'+pi+'-'+ci+'">2s</span>':'');
+      }
+
+      // click: snap select if eligible, else normal clickCard
+      if(useSnap){
+        card.onclick=function(){selectForSnap(pi,ci);};
+      } else {
+        card.onclick=function(){clickCard(pi,ci);};
+      }
+      // drag (desktop) — only for snap
+      if(useSnap){
+        card.draggable=true;
+        card.addEventListener('dragstart',function(e){dragStart(e,pi,ci);});
+        card.addEventListener('dragend',dragEnd);
+      }
+      row.appendChild(card);
+    }
+    div.appendChild(row);
+    gb.appendChild(div);
+  }
+
+  // Piles
+  let topD=G.disc.length?G.disc[G.disc.length-1]:null;
+  let ld=topD?lbl(topD):null;
+  let dpick=G.phase==='draw'&&G.cur===0;
+  let ddpick=dpick&&G.disc.length>0;
+  let piles=document.createElement('div');
+  piles.className='piles';
+
+  // Deck pile
+  let deckEl=document.createElement('div');
+  deckEl.className='pile'+(dpick?' pick':'');
+  deckEl.id='pile-deck';
+  deckEl.innerHTML='<span style="font-size:22px">🂠</span><span class="pile-label">חפיסה ('+G.deck.length+')</span>';
+  deckEl.onclick=function(){clickPile('deck');};
+  piles.appendChild(deckEl);
+
+  // Discard pile
+  let discEl=document.createElement('div');
+  discEl.className='pile'+(ddpick?' pick':'');
+  discEl.id='pile-disc';
+  let discContent=topD?('<span class="pile-val'+(ld.r?' red':'')+'">'+( topD.jk?'JK':ld.m+ld.s)+'</span>'):'<span style="font-size:11px;color:#555">ריק</span>';
+  let discLabel=G.snapSelected?'👆 לחץ להדביק':'זרוקים';
+  discEl.innerHTML=discContent+'<span class="pile-label">'+discLabel+'</span>';
+  discEl.onclick=function(){if(G.snapSelected)snapToDiscard();else clickPile('disc');};
+  discEl.addEventListener('dragover',function(e){e.preventDefault();discEl.classList.add('drag-over');});
+  discEl.addEventListener('dragleave',function(){discEl.classList.remove('drag-over');});
+  discEl.addEventListener('drop',dropOnDiscard);
+  piles.appendChild(discEl);
+
+  gb.appendChild(piles);
+}
+
+function renderActs(){
+  let ac=document.getElementById('acts'); if(!ac)return; ac.innerHTML='';
+  if(G.cur!==0||G.over)return;
+  if(G.phase==='snap-give'&&G.cur===0){
+    let sd=G.snapData;
+    let p=document.createElement('p');
+    p.style.cssText='font-size:13px;color:#fda4af;text-align:center;margin-bottom:6px';
+    p.textContent='בחר קלף שלך לתת ל-'+G.players[sd.targetPi].name;
+    ac.appendChild(p);
+    return;
+  }
+  if(G.phase==='drawn'){
+    let c=G.drawn;
+    if(c&&isSp(c)){
+      let lbl2='יכולת';
+      if(c.v==='7'||c.v==='8')lbl2='👁 הצץ לעצמך';
+      else if(c.v==='9'||c.v==='10')lbl2='👁 הצץ ליריב';
+      else if(c.v==='J'||c.v==='Q')lbl2='🔄 החלף עיוור';
+      else if(c.v==='K')lbl2=isRed(c)?'♥ King אדום (−1)':'♠ King שחור';
+      let b=document.createElement('button'); b.className='btn primary sm'; b.textContent='⚡ '+lbl2; b.onclick=useSpecial; ac.appendChild(b);
+    }
+    let b2=document.createElement('button'); b2.className='btn sm'; b2.textContent='↩ החלף קלף'; b2.onclick=doReplace; ac.appendChild(b2);
+    let b3=document.createElement('button'); b3.className='btn sm'; b3.textContent='🗑 זרוק'; b3.onclick=doDiscard; ac.appendChild(b3);
+  }
+  if(G.phase==='draw'&&!G.cambio){
+    let b=document.createElement('button'); b.className='btn danger sm'; b.textContent='🏁 קמביו!'; b.onclick=doCambio; ac.appendChild(b);
+  }
+}
+
+// TWO-TAP SNAP: tap card to select, then tap discard pile to snap
+function selectForSnap(pi,ci){
+  if(G.over||G.snapUsed||!G.disc.length)return;
+  if(G.cambio&&G.cambioWho===pi)return;
+  let card=G.players[pi].cards[ci];
+  if(!card)return;
+  // if same card tapped again — deselect
+  if(G.snapSelected&&G.snapSelected.pi===pi&&G.snapSelected.ci===ci){
+    G.snapSelected=null;
+    st(G.cur===0?'התורך! שלוף קלף, או בחר קלף להדביק.':'תור של '+G.players[G.cur].name+'...');
+    render(); return;
+  }
+  G.snapSelected={pi,ci};
+  st('קלף נבחר! עכשיו לחץ על ערימת הזרוקים להדביק.','warn');
+  render();
+}
+
+function snapToDiscard(){
+  if(!G.snapSelected)return;
+  let {pi,ci}=G.snapSelected;
+  G.snapSelected=null;
+  G.dragPi=pi; G.dragCi=ci;
+  dropOnDiscard({preventDefault:()=>{}});
+}
+
+function dragStart(e,pi,ci){
+  G.dragPi=pi; G.dragCi=ci;
+  let el=document.getElementById('card-'+pi+'-'+ci);
+  if(el)setTimeout(()=>el.classList.add('dragging'),0);
+}
+function dragEnd(e){
+  document.querySelectorAll('.card.dragging').forEach(el=>el.classList.remove('dragging'));
+  document.getElementById('pile-disc')?.classList.remove('drag-over');
+}
+function dropOnDiscard(e){
+  e.preventDefault();
+  document.getElementById('pile-disc')?.classList.remove('drag-over');
+  let pi=G.dragPi, ci=G.dragCi;
+  if(pi===undefined||ci===undefined)return;
+  if(G.over||G.snapUsed||!G.disc.length)return;
+  if(G.cambio&&G.cambioWho===pi)return;
+  let topDisc=G.disc[G.disc.length-1];
+  let targetCard=G.players[pi].cards[ci];
+  if(!targetCard)return;
+  if(!topDisc.jk&&!targetCard.jk&&topDisc.v===targetCard.v){
+    G.snapUsed=true;
+    let wasAiTurn=G.cur!==0;
+    showToast('✅ הדבקה!',1200);
+    let snapEl=document.getElementById('card-'+pi+'-'+ci);
+    let discPile=document.getElementById('pile-disc');
+    flyCard(snapEl,discPile,cardName(G.players[pi].cards[ci]),'#f0f0f0',null);
+    flashCards([{pi,ci}],'snap-target',500,()=>{
+      G.disc.push(targetCard);
+      G.players[pi].cards.splice(ci,1);
+      G.players[pi].peeking.splice(ci,1);
+      if(pi===0){
+        alog('הדבקת קלף שלך! '+cardName(targetCard));
+        st('הדבקת קלף שלך!','success');
+        G.snapData={}; render(); renderActs();
+      } else {
+        G.snapData={targetPi:pi,targetCi:ci,wasAiTurn};
+        alog('הדבקת! '+cardName(targetCard)+' מ-'+G.players[pi].name);
+        st('הדבקה נכונה! תן קלף שלך ל-'+G.players[pi].name+'.','snap');
+        G.phase='snap-give'; render(); renderActs();
+      }
+    });
+  } else {
+    showToast('❌ הדבקה שגויה!',1400);
+    st('הדבקה שגויה! קיבלת קלף עונש.','snap');
+    alog('הדבקה שגויה! קיבלת קלף עונש');
+    setTimeout(()=>{
+      let disc=document.getElementById('pile-disc');
+      if(disc){disc.classList.add('anim-shake');setTimeout(()=>disc.classList.remove('anim-shake'),450);}
+    },50);
+    if(G.deck.length>0){
+      let penalty=G.deck.pop();
+      G.players[0].cards.push(penalty);
+      let ni=G.players[0].cards.length-1;
+      G.players[0].peeking[ni]=true;
+      render();
+      setTimeout(()=>{let pdEl=document.getElementById('pile-deck');let pcEl=document.getElementById('card-0-'+ni);flyCard(pdEl,pcEl||pdEl,cardName(penalty),lbl(penalty).r?'#f87171':'#f0f0f0',null);},50);
+      let penDeckEl=document.getElementById('pile-deck');
+      let penCardEl=document.getElementById('card-0-'+ni);
+      flyCard(penDeckEl,penCardEl||penDeckEl,cardName(penalty),lbl(penalty).r?'#f87171':'#f0f0f0',null);
+      setTimeout(()=>{G.players[0].peeking[ni]=false;render();st('המשך — שלוף קלף.');},2000);
+    }
+  }
+  G.dragPi=undefined; G.dragCi=undefined;
+}
+
+
+function reset(){SEL=0;G={};show('s-setup');document.querySelectorAll('.cnt').forEach(c=>c.classList.remove('sel'));document.getElementById('go-btn').disabled=true;}
+</script>
+</body>
+</html>

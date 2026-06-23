@@ -16,7 +16,7 @@ const SUITS = ['♠','♥','♦','♣'];
 const VALS  = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 
 function pts(c) {
-  if (!c) return 0; if (c.jk) return 0;
+  if (!c || c==='X') return 0; if (c.jk) return 0;
   if (c.v==='K'&&(c.s==='♥'||c.s==='♦')) return -1;
   if (c.v==='A') return 1; if (c.v==='J') return 11;
   if (c.v==='Q') return 12; if (c.v==='K') return 13;
@@ -54,15 +54,15 @@ function stateFor(room, socketId) {
     players: g.players.map((p,pi)=>({
       name: p.name,
       isAI: p.isAI,
-      cardCount: p.cards.length,
-      // Show card only if myIdx is the one peeking it (or game over)
+      cardCount: p.cards.filter(c=>c!=='X').length,
       cards: p.cards.map((c,ci)=>{
+        if (c==='X') return 'X';
         if (g.over) return c;
         if (p.peeking[ci] && p.peeker[ci] === myIdx) return c;
         return null;
       }),
-      // peeking[ci] = true only if I (myIdx) am peeking that card
       peeking: p.cards.map((_,ci)=> p.peeking[ci] && p.peeker[ci] === myIdx),
+      beingPeeked: p.cards.map((_,ci)=> !!p.peeking[ci]),
     })),
     myIdx,
     cur: g.cur,
@@ -70,6 +70,7 @@ function stateFor(room, socketId) {
     disc: g.disc,
     deckCount: g.deck.length,
     drawn: isCurMe ? g.drawn : (g.drawn ? true : null),
+    drawnFrom: isCurMe ? g.drawnFrom : null,
     cambio: g.cambio,
     cambioWho: g.cambioWho,
     over: g.over,
@@ -187,11 +188,11 @@ function endTurn(room) {
 function advanceTurn(room) {
   const g = room.game;
   g.cur=(g.cur+1)%g.np;
-  g.drawn=null; g.spData={}; g.phase='draw';
+  g.drawn=null; g.drawnFrom=null; g.spData={}; g.phase='draw';
   g.snapUsed=false; g.snapData={};
 
   const cur=g.players[g.cur];
-  if(cur.cards.length===0&&!g.cambio){
+  if(cur.cards.filter(c=>c!=='X').length===0&&!g.cambio){
     g.cambio=true; g.cambioWho=g.cur;
     addLog(g,`${cur.name} הגיע ל-0 קלפים — קמביו אוטומטי!`);
     setSt(g,`${cur.name} — 0 קלפים! קמביו אוטומטי!`,'cambio-flash');
@@ -226,9 +227,9 @@ function handleSnap(room, snapperSocketId, targetPi, targetCi) {
 
   if(!topDisc.jk&&!targetCard.jk&&topDisc.v===targetCard.v){
     sendAnim(room, `c-${targetPi}-${targetCi}`, 'pile-disc', cardName(targetCard), isRed(targetCard));
-    g.players[targetPi].cards.splice(targetCi,1);
-    g.players[targetPi].peeking.splice(targetCi,1);
-    g.players[targetPi].peeker.splice(targetCi,1);
+    g.players[targetPi].cards[targetCi]='X';
+    g.players[targetPi].peeking[targetCi]=false;
+    g.players[targetPi].peeker[targetCi]=null;
     g.disc.push(targetCard);
     addLog(g,`${g.players[snapperIdx].name} הדביק! ${cardName(targetCard)} מ-${g.players[targetPi].name}`);
 
@@ -268,11 +269,13 @@ function aiGiveSnapCard(room) {
   if(!g||g.phase!=='snap-give')return;
   const sd=g.snapData;
   const ai=g.players[sd.snapperPi];
-  let worst=0, worstPts=pts(ai.cards[0])||0;
-  for(let k=1;k<ai.cards.length;k++) if(ai.cards[k]&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+  let worst=-1, worstPts=-Infinity;
+  for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+  if(worst===-1){setSt(g,'הדבקה הושלמה!','success');g.phase='draw';g.snapData={};broadcast(room);return;}
   const givenCard=ai.cards[worst];
-  sendAnim(room,`c-${sd.snapperPi}-${worst}`,`c-${sd.targetPi}-0`,cardName(givenCard),isRed(givenCard));
-  ai.cards.splice(worst,1); ai.peeking.splice(worst,1); ai.peeker.splice(worst,1);
+  const newSlot=g.players[sd.targetPi].cards.length;
+  sendAnim(room,`c-${sd.snapperPi}-${worst}`,`c-${sd.targetPi}-${newSlot}`,cardName(givenCard),isRed(givenCard));
+  ai.cards[worst]='X'; ai.peeking[worst]=false; ai.peeker[worst]=null;
   g.players[sd.targetPi].cards.push(givenCard);
   g.players[sd.targetPi].peeking.push(false);
   g.players[sd.targetPi].peeker.push(null);
@@ -292,9 +295,10 @@ function humanGiveSnapCard(room, socketId, cardIndex) {
   const snapper=g.players[snapperIdx];
   if(cardIndex<0||cardIndex>=snapper.cards.length)return;
   const givenCard=snapper.cards[cardIndex];
-  if(!givenCard)return;
-  sendAnim(room,`c-${snapperIdx}-${cardIndex}`,`c-${sd.targetPi}-0`,cardName(givenCard),isRed(givenCard));
-  snapper.cards.splice(cardIndex,1); snapper.peeking.splice(cardIndex,1); snapper.peeker.splice(cardIndex,1);
+  if(!givenCard||givenCard==='X')return;
+  const newSlot=g.players[sd.targetPi].cards.length;
+  sendAnim(room,`c-${snapperIdx}-${cardIndex}`,`c-${sd.targetPi}-${newSlot}`,cardName(givenCard),isRed(givenCard));
+  snapper.cards[cardIndex]='X'; snapper.peeking[cardIndex]=false; snapper.peeker[cardIndex]=null;
   g.players[sd.targetPi].cards.push(givenCard);
   g.players[sd.targetPi].peeking.push(false);
   g.players[sd.targetPi].peeker.push(null);
@@ -321,18 +325,20 @@ function aiTurn(room) {
             const ai=g.players[g.cur];
             const targetCard=g.players[oi].cards[ci];
             sendAnim(room,`c-${oi}-${ci}`,'pile-disc',cardName(targetCard),isRed(targetCard));
-            g.players[oi].cards.splice(ci,1); g.players[oi].peeking.splice(ci,1); g.players[oi].peeker.splice(ci,1);
+            g.players[oi].cards[ci]='X'; g.players[oi].peeking[ci]=false; g.players[oi].peeker[ci]=null;
             g.disc.push(targetCard);
             addLog(g,`${ai.name} הדביק! ${cardName(targetCard)} מ-${g.players[oi].name}`);
             setSt(g,`${ai.name} הדביק על ${g.players[oi].name}!`,'snap');
             broadcast(room);
             setTimeout(()=>{
               if(!room.game)return;
-              let worst=0,worstPts=pts(ai.cards[0])||0;
-              for(let k=1;k<ai.cards.length;k++) if(ai.cards[k]&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+              let worst=-1,worstPts=-Infinity;
+              for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+              if(worst===-1){advanceTurn(room);return;}
               const givenCard=ai.cards[worst];
-              sendAnim(room,`c-${g.cur}-${worst}`,`c-${oi}-0`,cardName(givenCard),isRed(givenCard));
-              ai.cards.splice(worst,1); ai.peeking.splice(worst,1); ai.peeker.splice(worst,1);
+              const newOiSlot=g.players[oi].cards.length;
+              sendAnim(room,`c-${g.cur}-${worst}`,`c-${oi}-${newOiSlot}`,cardName(givenCard),isRed(givenCard));
+              ai.cards[worst]='X'; ai.peeking[worst]=false; ai.peeker[worst]=null;
               g.players[oi].cards.push(givenCard); g.players[oi].peeking.push(false); g.players[oi].peeker.push(null);
               addLog(g,`${ai.name} נתן ${cardName(givenCard)} ל-${g.players[oi].name}`);
               broadcast(room);
@@ -383,17 +389,17 @@ function aiDraw(room) {
         broadcast(room); afterAiAction(room);
 
       } else if(drawn.v==='J'||drawn.v==='Q'){
-        let worst=0,worstPts=pts(ai.cards[0])||0;
-        for(let k=1;k<ai.cards.length;k++) if(ai.cards[k]&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+        let worst=-1,worstPts=-Infinity;
+        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
         let best2=0,best2Pts=999,best2Pi=-1;
         for(let oi=0;oi<g.np;oi++){
           if(oi===g.cur)continue;
           for(let k=0;k<g.players[oi].cards.length;k++){
-            const c=g.players[oi].cards[k]; if(!c)continue;
+            const c=g.players[oi].cards[k]; if(!c||c==='X')continue;
             if(pts(c)<best2Pts&&!(g.cambio&&g.cambioWho===oi)){best2Pts=pts(c);best2=k;best2Pi=oi;}
           }
         }
-        if(best2Pi!==-1){
+        if(best2Pi!==-1&&worst!==-1){
           sendAnim(room,`c-${g.cur}-${worst}`,`c-${best2Pi}-${best2}`,'?',false);
           sendAnim(room,`c-${best2Pi}-${best2}`,`c-${g.cur}-${worst}`,'?',false);
           const tmp=ai.cards[worst]; ai.cards[worst]=g.players[best2Pi].cards[best2]; g.players[best2Pi].cards[best2]=tmp;
@@ -403,28 +409,30 @@ function aiDraw(room) {
 
       } else if(drawn.v==='K'&&isRed(drawn)){
         g.disc.pop();
-        let worst=0,worstPts=pts(ai.cards[0])||0;
-        for(let k=1;k<ai.cards.length;k++) if(ai.cards[k]&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
-        sendAnim(room,`c-${g.cur}-${worst}`,'pile-disc',cardName(ai.cards[worst]),isRed(ai.cards[worst]));
-        g.disc.push(ai.cards[worst]); ai.cards[worst]=drawn;
+        let worst=-1,worstPts=-Infinity;
+        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+        if(worst!==-1){
+          sendAnim(room,`c-${g.cur}-${worst}`,'pile-disc',cardName(ai.cards[worst]),isRed(ai.cards[worst]));
+          g.disc.push(ai.cards[worst]); ai.cards[worst]=drawn;
+        } else { g.disc.push(drawn); }
         addLog(g,`${ai.name} שם King אדום`); setSt(g,`${ai.name} שם King אדום!`,'success');
         broadcast(room); afterAiAction(room);
 
       } else { // Black K
-        let worst=0,worstPts=pts(ai.cards[0])||0;
-        for(let k=1;k<ai.cards.length;k++) if(ai.cards[k]&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+        let worst=-1,worstPts=-Infinity;
+        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
         let bestOp=null,bestOpPts=999;
         for(let oi=0;oi<g.np;oi++){
           if(oi===g.cur||g.cambio&&g.cambioWho===oi)continue;
           for(let k=0;k<g.players[oi].cards.length;k++){
-            const c=g.players[oi].cards[k]; if(!c)continue;
+            const c=g.players[oi].cards[k]; if(!c||c==='X')continue;
             if(pts(c)<bestOpPts){bestOpPts=pts(c);bestOp={pi:oi,ci:k};}
           }
         }
         setSt(g,`${ai.name} — King שחור!`,'warn');
         setTimeout(()=>{
           if(!room.game)return;
-          if(bestOp){
+          if(bestOp&&worst!==-1){
             sendAnim(room,`c-${g.cur}-${worst}`,`c-${bestOp.pi}-${bestOp.ci}`,'?',false);
             sendAnim(room,`c-${bestOp.pi}-${bestOp.ci}`,`c-${g.cur}-${worst}`,'?',false);
             const tmp=ai.cards[worst]; ai.cards[worst]=g.players[bestOp.pi].cards[bestOp.ci]; g.players[bestOp.pi].cards[bestOp.ci]=tmp;
@@ -437,9 +445,9 @@ function aiDraw(room) {
     }
 
     // Regular card
-    let best=0,bestPts=pts(ai.cards[0])||0;
-    for(let i=1;i<ai.cards.length;i++) if(ai.cards[i]&&pts(ai.cards[i])>bestPts){bestPts=pts(ai.cards[i]);best=i;}
-    if(pts(drawn)<bestPts){
+    let best=-1,bestPts=-Infinity;
+    for(let i=0;i<ai.cards.length;i++) if(ai.cards[i]&&ai.cards[i]!=='X'&&pts(ai.cards[i])>bestPts){bestPts=pts(ai.cards[i]);best=i;}
+    if(best!==-1&&pts(drawn)<bestPts){
       sendAnim(room,`c-${g.cur}-${best}`,'pile-disc',cardName(ai.cards[best]),isRed(ai.cards[best]));
       g.disc.push(ai.cards[best]); ai.cards[best]=drawn; g.drawn=null;
       addLog(g,`${ai.name} החליף קלף ${best+1}`); setSt(g,`${ai.name} החליף קלף.`);
@@ -455,7 +463,7 @@ function aiDraw(room) {
 function afterAiAction(room) {
   const g=room.game; if(!g)return;
   const ai=g.players[g.cur];
-  const total=ai.cards.reduce((s,c)=>s+pts(c),0);
+  const total=ai.cards.filter(c=>c&&c!=='X').reduce((s,c)=>s+pts(c),0);
   if(!g.cambio&&total<=5&&Math.random()<0.55){
     g.cambio=true; g.cambioWho=g.cur;
     addLog(g,`${ai.name} קרא קמביו!`);
@@ -477,8 +485,8 @@ function endGame(room) {
   const g=room.game; if(!g)return;
   g.over=true;
   g.scores=g.players.map((p,i)=>({
-    name:p.name, score:p.cards.reduce((s,c)=>s+pts(c),0),
-    cambio:g.cambioWho===i, cards:p.cards
+    name:p.name, score:p.cards.filter(c=>c&&c!=='X').reduce((s,c)=>s+pts(c),0),
+    cambio:g.cambioWho===i, cards:p.cards.filter(c=>c&&c!=='X')
   }));
   setSt(g,'המשחק הסתיים!','success');
   broadcast(room);
@@ -633,7 +641,7 @@ io.on('connection', socket=>{
     const pi=room.players.findIndex(p=>p.id===socket.id);
     if(pi!==g.cur||g.phase!=='draw')return;
     if(g.deck.length===0)return;
-    g.drawn=g.deck.pop(); g.phase='drawn';
+    g.drawn=g.deck.pop(); g.phase='drawn'; g.drawnFrom='deck';
     setSt(g,'שלפת קלף. בחר פעולה.');
     broadcast(room);
   });
@@ -646,7 +654,7 @@ io.on('connection', socket=>{
     if(pi!==g.cur||g.phase!=='draw')return;
     if(g.disc.length===0)return;
     sendAnim(room,'pile-disc',`c-${pi}-0`,cardName(g.disc[g.disc.length-1]),isRed(g.disc[g.disc.length-1]));
-    g.drawn=g.disc.pop(); g.phase='drawn';
+    g.drawn=g.disc.pop(); g.phase='drawn'; g.drawnFrom='disc';
     setSt(g,'שלפת מהזרוקים. בחר פעולה.');
     broadcast(room);
   });

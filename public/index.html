@@ -511,10 +511,14 @@ function renderActs(s){
     if(c&&isSp(c)){
       let lbl2='⚡ יכולת';
       if(c.v==='7'||c.v==='8')lbl2='👁 הצץ לעצמך';
-      else if(c.v==='9'||c.v==='10')lbl2='👁 הצץ ליריב';
+      else if(c.v==='9'||c.v==='10'){
+        const hasTarget=s.players.some((_,i)=>i!==myIdx&&!(s.cambio&&s.cambioWho===i));
+        if(!hasTarget)lbl2=null;
+        else lbl2='👁 הצץ ליריב';
+      }
       else if(c.v==='J'||c.v==='Q')lbl2='🔄 החלף עיוור';
       else if(c.v==='K')lbl2=isRed(c)?'♥ King אדום (−1)':'♠ King שחור';
-      const b=document.createElement('button'); b.className='btn primary sm'; b.textContent=lbl2; b.onclick=()=>socket.emit('useSpecial'); ac.appendChild(b);
+      if(lbl2){const b=document.createElement('button'); b.className='btn primary sm'; b.textContent=lbl2; b.onclick=()=>socket.emit('useSpecial'); ac.appendChild(b);}
     }
     const b2=document.createElement('button'); b2.className='btn sm'; b2.textContent='↩ החלף קלף'; b2.onclick=()=>socket.emit('doReplace'); ac.appendChild(b2);
     const b3=document.createElement('button'); b3.className='btn sm'; b3.textContent='🗑 זרוק'; b3.onclick=()=>socket.emit('discard'); ac.appendChild(b3);

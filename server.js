@@ -494,7 +494,11 @@ function useSpecial(room, socketId) {
   g.disc.push(c); g.drawn=null;
 
   if(c.v==='7'||c.v==='8'){ g.phase='sp-peek-self'; setSt(g,'בחר קלף שלך להציץ.','action'); }
-  else if(c.v==='9'||c.v==='10'){ g.phase='sp-peek-other'; setSt(g,'בחר קלף של יריב להציץ.','action'); }
+  else if(c.v==='9'||c.v==='10'){
+    const hasTarget=g.players.some((_,i)=>i!==pi&&!(g.cambio&&g.cambioWho===i));
+    if(!hasTarget){ addLog(g,'אין יריב זמין להציץ'); setSt(g,'אין יריב זמין — הקלף נזרק.','action'); endTurn(room); return; }
+    g.phase='sp-peek-other'; setSt(g,'בחר קלף של יריב להציץ.','action');
+  }
   else if(c.v==='J'||c.v==='Q'){ g.phase='sp-swap-pick1'; g.spData={}; setSt(g,'בחר קלף ראשון להחלפה עיוורת.','warn'); }
   else if(c.v==='K'){
     if(isRed(c)){ addLog(g,'King אדום = −1'); setSt(g,'King אדום נזרק.','success'); endTurn(room); return; }

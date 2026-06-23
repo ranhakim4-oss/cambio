@@ -543,10 +543,12 @@ function pickCard(room, socketId, targetPi, targetCi) {
     endTurn(room);
   } else if(ph==='bk-peek1'){
     g.spData.p1=targetPi; g.spData.c1=targetCi;
-    doPeek(room,targetPi,targetCi,myPi,()=>{ addLog(g,`הצצה 1: קלף ${targetCi+1} של ${g.players[targetPi].name}`); g.phase='bk-peek2'; setSt(g,'הצץ בקלף שני.','action'); broadcast(room); });
+    g.phase='bk-peek2'; setSt(g,'הצץ בקלף שני.','action'); broadcast(room);
+    doPeek(room,targetPi,targetCi,myPi,()=>{ addLog(g,`הצצה 1: קלף ${targetCi+1} של ${g.players[targetPi].name}`); broadcast(room); });
   } else if(ph==='bk-peek2'){
-    const s=g.spData; if(targetPi===s.p1&&targetCi===s.c1)return;
-    doPeek(room,targetPi,targetCi,myPi,()=>{ addLog(g,`הצצה 2: קלף ${targetCi+1} של ${g.players[targetPi].name}`); g.phase='bk-swap-pick1'; setSt(g,'בחר קלף ראשון להחלפה.','action'); broadcast(room); });
+    const sd=g.spData; if(targetPi===sd.p1&&targetCi===sd.c1)return;
+    g.phase='bk-swap-pick1'; setSt(g,'בחר קלף ראשון להחלפה.','action'); broadcast(room);
+    doPeek(room,targetPi,targetCi,myPi,()=>{ addLog(g,`הצצה 2: קלף ${targetCi+1} של ${g.players[targetPi].name}`); broadcast(room); });
   } else if(ph==='bk-swap-pick1'){
     g.spData.sp1=targetPi; g.spData.sc1=targetCi; g.phase='bk-swap-pick2';
     setSt(g,`בחרת קלף ${targetCi+1} של ${g.players[targetPi].name}. בחר קלף שני.`,'warn');

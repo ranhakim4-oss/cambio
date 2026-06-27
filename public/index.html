@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>קמביו</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -130,6 +134,7 @@ input:focus{border-color:#5048d4}
       <button class="btn" onclick="showCreate()">🌐 יצירת חדר</button>
       <button class="btn" onclick="showJoin()">🔗 הצטרף לחדר</button>
     </div>
+    <button class="btn" onclick="location.href='/solo.html'" style="opacity:0.7;font-size:14px">📴 שחק ללא אינטרנט</button>
     <div class="rules-box">
       <p>
         <b>7/8</b> = הצץ לקלף שלך &nbsp;|&nbsp; <b>9/10</b> = הצץ לקלף יריב<br>
@@ -594,6 +599,7 @@ function showToast(msg,ms=1600){
 }
 
 showHome();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 </script>
 </body>
 </html>

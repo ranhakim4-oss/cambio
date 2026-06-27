@@ -715,6 +715,13 @@ io.on('connection', socket=>{
   socket.on('snap', ({targetPi,targetCi})=>{ const room=findRoomByPlayer(socket.id); if(room)handleSnap(room,socket.id,targetPi,targetCi); });
   socket.on('giveCard', ({ci})=>{ const room=findRoomByPlayer(socket.id); if(room)humanGiveSnapCard(room,socket.id,ci); });
 
+  socket.on('rematch', ()=>{
+    const room=findRoomByPlayer(socket.id);
+    if(!room||!room.game||!room.game.over)return;
+    if(room.host!==socket.id)return;
+    initGame(room);
+  });
+
   // Rejoin after mobile disconnect/reconnect
   socket.on('rejoin', ({name, code}, cb)=>{
     const room=rooms[code];

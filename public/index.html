@@ -198,7 +198,8 @@ input:focus{border-color:#5048d4}
 <div id="s-res" class="screen">
   <h2>סיום משחק</h2>
   <div id="res-body"></div>
-  <button class="btn primary" onclick="location.reload()">משחק חדש</button>
+  <button class="btn primary" id="rematch-btn" onclick="socket.emit('rematch')" style="display:none">🔄 שחק שוב</button>
+  <button class="btn" onclick="location.reload()">🏠 יציאה</button>
 </div>
 
 </div>
@@ -578,6 +579,7 @@ function showResults(s){
   document.getElementById('res-body').innerHTML=html;
   setTimeout(()=>{
     show('s-res');
+    document.getElementById('rematch-btn').style.display=isHost?'':'none';
     document.querySelectorAll('.fc').forEach((el,i)=>{ el.style.animationDelay=(i*0.1)+'s'; el.classList.add('anim-win'); });
   },500);
 }

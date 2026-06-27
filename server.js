@@ -23,6 +23,8 @@ function pts(c) {
   return parseInt(c.v);
 }
 function isRed(c) { return c&&!c.jk&&(c.s==='♥'||c.s==='♦'); }
+// AI uses known card value, or 6 (average) for unknown slots
+function aiPts(ai, k) { if(!ai.cards[k]||ai.cards[k]==='X')return 0; const c=ai.known[k]; return c?pts(c):6; }
 function isSp(c)  { if(!c||c.jk)return false; return ['7','8','9','10','J','Q','K'].includes(c.v); }
 function shuffle(a) {
   let b=[...a];
@@ -122,7 +124,8 @@ function initGame(room) {
     socketId: p.id||null,
     cards: [deck.pop(),deck.pop(),deck.pop(),deck.pop()],
     peeking: [false,false,false,false],
-    peeker:  [null, null, null, null],   // who is peeking each card
+    peeker:  [null, null, null, null],
+    known:   [null, null, null, null],   // what the AI knows about its own cards
   }));
 
   const peeksLeft = {};
@@ -230,6 +233,7 @@ function handleSnap(room, snapperSocketId, targetPi, targetCi) {
     g.players[targetPi].cards[targetCi]='X';
     g.players[targetPi].peeking[targetCi]=false;
     g.players[targetPi].peeker[targetCi]=null;
+    g.players[targetPi].known[targetCi]=null;
     g.disc.push(targetCard);
     addLog(g,`${g.players[snapperIdx].name} הדביק! ${cardName(targetCard)} מ-${g.players[targetPi].name}`);
 
@@ -270,15 +274,16 @@ function aiGiveSnapCard(room) {
   const sd=g.snapData;
   const ai=g.players[sd.snapperPi];
   let worst=-1, worstPts=-Infinity;
-  for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+  for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&aiPts(ai,k)>worstPts){worstPts=aiPts(ai,k);worst=k;}
   if(worst===-1){setSt(g,'הדבקה הושלמה!','success');g.phase='draw';g.snapData={};broadcast(room);return;}
   const givenCard=ai.cards[worst];
   const newSlot=g.players[sd.targetPi].cards.length;
   sendAnim(room,`c-${sd.snapperPi}-${worst}`,`c-${sd.targetPi}-${newSlot}`,cardName(givenCard),isRed(givenCard));
-  ai.cards[worst]='X'; ai.peeking[worst]=false; ai.peeker[worst]=null;
+  ai.cards[worst]='X'; ai.peeking[worst]=false; ai.peeker[worst]=null; ai.known[worst]=null;
   g.players[sd.targetPi].cards.push(givenCard);
   g.players[sd.targetPi].peeking.push(false);
   g.players[sd.targetPi].peeker.push(null);
+  g.players[sd.targetPi].known.push(null); // receiver doesn't know the card
   addLog(g,`${ai.name} נתן ${cardName(givenCard)} ל-${g.players[sd.targetPi].name}`);
   setSt(g,'הדבקה הושלמה!','success');
   g.phase='draw'; g.snapData={};
@@ -298,10 +303,11 @@ function humanGiveSnapCard(room, socketId, cardIndex) {
   if(!givenCard||givenCard==='X')return;
   const newSlot=g.players[sd.targetPi].cards.length;
   sendAnim(room,`c-${snapperIdx}-${cardIndex}`,`c-${sd.targetPi}-${newSlot}`,cardName(givenCard),isRed(givenCard));
-  snapper.cards[cardIndex]='X'; snapper.peeking[cardIndex]=false; snapper.peeker[cardIndex]=null;
+  snapper.cards[cardIndex]='X'; snapper.peeking[cardIndex]=false; snapper.peeker[cardIndex]=null; snapper.known[cardIndex]=null;
   g.players[sd.targetPi].cards.push(givenCard);
   g.players[sd.targetPi].peeking.push(false);
   g.players[sd.targetPi].peeker.push(null);
+  g.players[sd.targetPi].known.push(null); // receiver doesn't know the card
   addLog(g,`${snapper.name} נתן ${cardName(givenCard)} ל-${g.players[sd.targetPi].name}`);
   setSt(g,'הדבקה הושלמה!','success');
   g.phase='draw'; g.snapData={};
@@ -325,7 +331,7 @@ function aiTurn(room) {
             const ai=g.players[g.cur];
             const targetCard=g.players[oi].cards[ci];
             sendAnim(room,`c-${oi}-${ci}`,'pile-disc',cardName(targetCard),isRed(targetCard));
-            g.players[oi].cards[ci]='X'; g.players[oi].peeking[ci]=false; g.players[oi].peeker[ci]=null;
+            g.players[oi].cards[ci]='X'; g.players[oi].peeking[ci]=false; g.players[oi].peeker[ci]=null; g.players[oi].known[ci]=null;
             g.disc.push(targetCard);
             addLog(g,`${ai.name} הדביק! ${cardName(targetCard)} מ-${g.players[oi].name}`);
             setSt(g,`${ai.name} הדביק על ${g.players[oi].name}!`,'snap');
@@ -333,13 +339,13 @@ function aiTurn(room) {
             setTimeout(()=>{
               if(!room.game)return;
               let worst=-1,worstPts=-Infinity;
-              for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+              for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&aiPts(ai,k)>worstPts){worstPts=aiPts(ai,k);worst=k;}
               if(worst===-1){advanceTurn(room);return;}
               const givenCard=ai.cards[worst];
               const newOiSlot=g.players[oi].cards.length;
               sendAnim(room,`c-${g.cur}-${worst}`,`c-${oi}-${newOiSlot}`,cardName(givenCard),isRed(givenCard));
-              ai.cards[worst]='X'; ai.peeking[worst]=false; ai.peeker[worst]=null;
-              g.players[oi].cards.push(givenCard); g.players[oi].peeking.push(false); g.players[oi].peeker.push(null);
+              ai.cards[worst]='X'; ai.peeking[worst]=false; ai.peeker[worst]=null; ai.known[worst]=null;
+              g.players[oi].cards.push(givenCard); g.players[oi].peeking.push(false); g.players[oi].peeker.push(null); g.players[oi].known.push(null);
               addLog(g,`${ai.name} נתן ${cardName(givenCard)} ל-${g.players[oi].name}`);
               broadcast(room);
               setTimeout(()=>{
@@ -374,7 +380,9 @@ function aiDraw(room) {
       sendAnim(room,'pile-deck','pile-disc',cardName(drawn),isRed(drawn));
 
       if(drawn.v==='7'||drawn.v==='8'){
-        const ci=Math.floor(Math.random()*ai.cards.length);
+        const validSelf=ai.cards.map((c,i)=>i).filter(i=>ai.cards[i]&&ai.cards[i]!=='X');
+        const ci=validSelf.length>0?validSelf[Math.floor(Math.random()*validSelf.length)]:0;
+        if(ai.cards[ci]&&ai.cards[ci]!=='X') ai.known[ci]=ai.cards[ci]; // AI now knows this card
         addLog(g,`${ai.name} הציץ בקלף ${ci+1} שלו`);
         setSt(g,`${ai.name} הציץ בקלף שלו.`);
         broadcast(room); afterAiAction(room);
@@ -390,7 +398,7 @@ function aiDraw(room) {
 
       } else if(drawn.v==='J'||drawn.v==='Q'){
         let worst=-1,worstPts=-Infinity;
-        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&aiPts(ai,k)>worstPts){worstPts=aiPts(ai,k);worst=k;}
         let best2=0,best2Pts=999,best2Pi=-1;
         for(let oi=0;oi<g.np;oi++){
           if(oi===g.cur)continue;
@@ -403,6 +411,7 @@ function aiDraw(room) {
           sendAnim(room,`c-${g.cur}-${worst}`,`c-${best2Pi}-${best2}`,'?',false);
           sendAnim(room,`c-${best2Pi}-${best2}`,`c-${g.cur}-${worst}`,'?',false);
           const tmp=ai.cards[worst]; ai.cards[worst]=g.players[best2Pi].cards[best2]; g.players[best2Pi].cards[best2]=tmp;
+          ai.known[worst]=null; // blind swap — AI doesn't know what it received
           addLog(g,`${ai.name} החליף עיוור`); setSt(g,`${ai.name} ביצע החלפה עיוורת!`,'warn');
         }
         broadcast(room); afterAiAction(room);
@@ -410,17 +419,18 @@ function aiDraw(room) {
       } else if(drawn.v==='K'&&isRed(drawn)){
         g.disc.pop();
         let worst=-1,worstPts=-Infinity;
-        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&aiPts(ai,k)>worstPts){worstPts=aiPts(ai,k);worst=k;}
         if(worst!==-1){
           sendAnim(room,`c-${g.cur}-${worst}`,'pile-disc',cardName(ai.cards[worst]),isRed(ai.cards[worst]));
           g.disc.push(ai.cards[worst]); ai.cards[worst]=drawn;
+          ai.known[worst]=drawn; // AI knows it placed K red here
         } else { g.disc.push(drawn); }
         addLog(g,`${ai.name} שם King אדום`); setSt(g,`${ai.name} שם King אדום!`,'success');
         broadcast(room); afterAiAction(room);
 
       } else { // Black K
         let worst=-1,worstPts=-Infinity;
-        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&pts(ai.cards[k])>worstPts){worstPts=pts(ai.cards[k]);worst=k;}
+        for(let k=0;k<ai.cards.length;k++) if(ai.cards[k]&&ai.cards[k]!=='X'&&aiPts(ai,k)>worstPts){worstPts=aiPts(ai,k);worst=k;}
         let bestOp=null,bestOpPts=999;
         for(let oi=0;oi<g.np;oi++){
           if(oi===g.cur||g.cambio&&g.cambioWho===oi)continue;
@@ -433,9 +443,11 @@ function aiDraw(room) {
         setTimeout(()=>{
           if(!room.game)return;
           if(bestOp&&worst!==-1){
+            const receivedCard=g.players[bestOp.pi].cards[bestOp.ci];
             sendAnim(room,`c-${g.cur}-${worst}`,`c-${bestOp.pi}-${bestOp.ci}`,'?',false);
             sendAnim(room,`c-${bestOp.pi}-${bestOp.ci}`,`c-${g.cur}-${worst}`,'?',false);
-            const tmp=ai.cards[worst]; ai.cards[worst]=g.players[bestOp.pi].cards[bestOp.ci]; g.players[bestOp.pi].cards[bestOp.ci]=tmp;
+            const tmp=ai.cards[worst]; ai.cards[worst]=receivedCard; g.players[bestOp.pi].cards[bestOp.ci]=tmp;
+            ai.known[worst]=receivedCard; // AI peeked it, so knows what it received
             addLog(g,`${ai.name} — King שחור: החליף`);
           }
           broadcast(room); afterAiAction(room);
@@ -446,10 +458,11 @@ function aiDraw(room) {
 
     // Regular card
     let best=-1,bestPts=-Infinity;
-    for(let i=0;i<ai.cards.length;i++) if(ai.cards[i]&&ai.cards[i]!=='X'&&pts(ai.cards[i])>bestPts){bestPts=pts(ai.cards[i]);best=i;}
+    for(let i=0;i<ai.cards.length;i++) if(ai.cards[i]&&ai.cards[i]!=='X'&&aiPts(ai,i)>bestPts){bestPts=aiPts(ai,i);best=i;}
     if(best!==-1&&pts(drawn)<bestPts){
       sendAnim(room,`c-${g.cur}-${best}`,'pile-disc',cardName(ai.cards[best]),isRed(ai.cards[best]));
       g.disc.push(ai.cards[best]); ai.cards[best]=drawn; g.drawn=null;
+      ai.known[best]=drawn; // AI knows what it just placed
       addLog(g,`${ai.name} החליף קלף ${best+1}`); setSt(g,`${ai.name} החליף קלף.`);
     } else {
       sendAnim(room,'pile-deck','pile-disc',cardName(drawn),isRed(drawn));
@@ -463,7 +476,8 @@ function aiDraw(room) {
 function afterAiAction(room) {
   const g=room.game; if(!g)return;
   const ai=g.players[g.cur];
-  const total=ai.cards.filter(c=>c&&c!=='X').reduce((s,c)=>s+pts(c),0);
+  // AI calls cambio based on what it KNOWS (unknown cards estimated at 6 pts)
+  const total=ai.cards.reduce((s,c,i)=>{if(!c||c==='X')return s;return s+(ai.known[i]?pts(ai.known[i]):6);},0);
   if(!g.cambio&&total<=5&&Math.random()<0.55){
     g.cambio=true; g.cambioWho=g.cur;
     addLog(g,`${ai.name} קרא קמביו!`);

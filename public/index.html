@@ -230,6 +230,7 @@ function pickSoloAi(n){ selSoloAi=n; [1,2,3].forEach(i=>document.getElementById(
 function startSolo(){
   socket.emit('createAndStart',{name:myName,aiCount:selSoloAi},res=>{
     if(!res.ok){showToast('שגיאה',1200);return;}
+    isHost=true; myRoom=res.code;
   });
 }
 function checkName(){

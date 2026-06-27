@@ -499,8 +499,8 @@ function clickCard(pi,ci){
 
 function clickPile(from){
   if(G.phase!=='draw'||G.cur!==0||G.over)return;
-  if(from==='deck'){G.drawn=G.deck.pop();}
-  else{if(!G.disc.length)return; G.drawn=G.disc.pop();}
+  if(from==='deck'){G.drawn=G.deck.pop(); G.drawnFrom='deck';}
+  else{if(!G.disc.length)return; G.drawn=G.disc.pop(); G.drawnFrom='disc';}
   let l=lbl(G.drawn);
   st('שלפת: <b>'+(G.drawn.jk?"ג'וקר":l.m+l.s)+'</b>. בחר פעולה.');
   G.phase='drawn'; renderActs(); render();
@@ -557,7 +557,7 @@ function endTurn(){
   advanceTurn();
 }
 function advanceTurn(){
-  G.cur=(G.cur+1)%G.np; G.drawn=null; G.spData={}; G.phase='draw'; G.snapUsed=false; G.aiSnapUsed=false; G.snapData={}; G.snapSelected=null; render();
+  G.cur=(G.cur+1)%G.np; G.drawn=null; G.drawnFrom=null; G.spData={}; G.phase='draw'; G.snapUsed=false; G.aiSnapUsed=false; G.snapData={}; G.snapSelected=null; render();
   let curPlayer=G.players[G.cur];
   // auto-cambio if player has 0 cards
   if(curPlayer.cards.length===0&&!G.cambio){
@@ -603,7 +603,7 @@ function aiTurn(){
                 G.disc.push(targetCard);
                 G.players[oi].cards.splice(ci,1);
                 G.players[oi].peeking.splice(ci,1);
-                alog(ai.name+' הדביק! '+cardName(targetCard)+' מ-'+G.players[oi].name);
+                alog(ai.name+' הדביק על '+G.players[oi].name+'!');
                 st(ai.name+' הדביק על '+G.players[oi].name+'!','snap');
                 showToast('⚡ '+ai.name+'\nהדביק!',1200);
                 setTimeout(()=>{
@@ -613,7 +613,7 @@ function aiTurn(){
                   ai.cards.splice(worst,1);
                   ai.peeking.splice(worst,1);
                   G.players[oi].cards.push(givenCard);
-                  alog(ai.name+' נתן '+cardName(givenCard)+' ל-'+G.players[oi].name);
+                  alog(ai.name+' נתן קלף ל-'+G.players[oi].name);
                   render();
                   setTimeout(afterAiSnap,700);
                 },1000);
@@ -655,13 +655,13 @@ function aiDraw(){
     if(isSp(drawn)){
       let spFromEl=document.getElementById('pile-deck');
       let spToEl=document.getElementById('pile-disc');
-      flyCard(spFromEl,spToEl,cardName(drawn),lbl(drawn).r?'#f87171':'#f0f0f0',null);
+      flyCard(spFromEl,spToEl,'?','#a78bfa',null);
       G.disc.push(drawn);
 
       // 7/8 — peek own card silently (AI already knows, just pick lowest unknown and log)
       if(drawn.v==='7'||drawn.v==='8'){
         let ci=Math.floor(Math.random()*ai.cards.length);
-        alog(ai.name+' הציץ בקלף '+(ci+1)+' שלו ('+drawn.v+')');
+        alog(ai.name+' הציץ בקלף '+(ci+1)+' שלו.');
         st(ai.name+' הציץ בקלף שלו.');
         afterAiAction();
 
@@ -669,7 +669,7 @@ function aiDraw(){
       } else if(drawn.v==='9'||drawn.v==='10'){
         let hci=Math.floor(Math.random()*G.players[0].cards.length);
         let c=G.players[0].cards[hci];
-        alog(ai.name+' הציץ בקלף '+(hci+1)+' שלך! ('+drawn.v+')');
+        alog(ai.name+' הציץ בקלף '+(hci+1)+' שלך!');
         st(ai.name+' הציץ באחד הקלפים שלך...','warn');
         afterAiAction();
 
@@ -691,8 +691,8 @@ function aiDraw(){
         let aiEl2=document.getElementById('card-'+best2Pi+'-'+best2);
         let ac1=G.players[worstPi].cards[worst], ac2=G.players[best2Pi].cards[best2];
         let al1=lbl(ac1), al2=lbl(ac2);
-        flyCard(aiEl1,aiEl2,al1.m+al1.s,al1.r?'#f87171':'#f0f0f0',null);
-        flyCard(aiEl2,aiEl1,al2.m+al2.s,al2.r?'#f87171':'#f0f0f0',()=>{
+        flyCard(aiEl1,aiEl2,'?','#a78bfa',null);
+        flyCard(aiEl2,aiEl1,'?','#a78bfa',()=>{
           let tmp=G.players[worstPi].cards[worst];
           G.players[worstPi].cards[worst]=G.players[best2Pi].cards[best2];
           G.players[best2Pi].cards[best2]=tmp;
@@ -710,11 +710,11 @@ function aiDraw(){
         G.disc.pop();
         let krFromEl=document.getElementById('card-'+G.cur+'-'+worst);
         let krToEl=document.getElementById('pile-disc');
-        flyCard(krFromEl,krToEl,cardName(ai.cards[worst]),lbl(ai.cards[worst]).r?'#f87171':'#f0f0f0',null);
+        flyCard(krFromEl,krToEl,'?','#a78bfa',null);
         setTimeout(()=>{
           G.disc.push(ai.cards[worst]);
           ai.cards[worst]=drawn;
-          alog(ai.name+' החליף קלף '+(worst+1)+' ('+cardName(G.disc[G.disc.length-1])+') עם King אדום!');
+          alog(ai.name+' שם King אדום.');
           st(ai.name+' שם King אדום במקום קלף גבוה.','success');
           afterAiAction();
         },500);
@@ -747,8 +747,8 @@ function aiDraw(){
           let bkEl2=document.getElementById('card-'+bestOp.pi+'-'+bestOp.ci);
           let bkc1=ai.cards[worstK], bkc2=G.players[bestOp.pi].cards[bestOp.ci];
           let bkl1=lbl(bkc1), bkl2=lbl(bkc2);
-          flyCard(bkEl1,bkEl2,bkl1.m+bkl1.s,bkl1.r?'#f87171':'#f0f0f0',null);
-          flyCard(bkEl2,bkEl1,bkl2.m+bkl2.s,bkl2.r?'#f87171':'#f0f0f0',()=>{
+          flyCard(bkEl1,bkEl2,'?','#a78bfa',null);
+          flyCard(bkEl2,bkEl1,'?','#a78bfa',()=>{
             let tmp=ai.cards[worstK];
             ai.cards[worstK]=G.players[bestOp.pi].cards[bestOp.ci];
             G.players[bestOp.pi].cards[bestOp.ci]=tmp;
@@ -768,18 +768,18 @@ function aiDraw(){
     if(p<bestPts){
       let rpEl=document.getElementById('card-'+G.cur+'-'+best);
       let discEl2=document.getElementById('pile-disc');
-      flyCard(rpEl,discEl2,cardName(ai.cards[best]),'#f0f0f0',()=>{
+      flyCard(rpEl,discEl2,'?','#a78bfa',()=>{
         G.disc.push(ai.cards[best]); ai.cards[best]=drawn;
-        alog(ai.name+' החליף קלף '+(best+1)+' ('+cardName(G.disc[G.disc.length-1])+'→'+cardName(drawn)+')');
+        alog(ai.name+' החליף קלף '+(best+1)+'.');
         st(ai.name+' החליף קלף.');
         afterAiAction();
       });
     } else {
       let aiDiscFromEl=document.getElementById('pile-deck');
       let aiDiscToEl=document.getElementById('pile-disc');
-      flyCard(aiDiscFromEl,aiDiscToEl,cardName(drawn),lbl(drawn).r?'#f87171':'#f0f0f0',null);
+      flyCard(aiDiscFromEl,aiDiscToEl,'?','#a78bfa',null);
       G.disc.push(drawn);
-      alog(ai.name+' זרק '+cardName(drawn));
+      alog(ai.name+' זרק.');
       st(ai.name+' זרק.');
       afterAiAction();
     }
@@ -944,7 +944,7 @@ function renderActs(){
   }
   if(G.phase==='drawn'){
     let c=G.drawn;
-    if(c&&isSp(c)){
+    if(c&&isSp(c)&&G.drawnFrom==='deck'){
       let lbl2='יכולת';
       if(c.v==='7'||c.v==='8')lbl2='👁 הצץ לעצמך';
       else if(c.v==='9'||c.v==='10')lbl2='👁 הצץ ליריב';

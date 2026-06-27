@@ -476,9 +476,11 @@ function aiDraw(room) {
 function afterAiAction(room) {
   const g=room.game; if(!g)return;
   const ai=g.players[g.cur];
-  // AI calls cambio based on what it KNOWS (unknown cards estimated at 6 pts)
-  const total=ai.cards.reduce((s,c,i)=>{if(!c||c==='X')return s;return s+(ai.known[i]?pts(ai.known[i]):6);},0);
-  if(!g.cambio&&total<=5&&Math.random()<0.55){
+  // AI only calls cambio when it knows ALL its cards (no blind guessing)
+  const activeSlots=ai.cards.map((c,i)=>i).filter(i=>ai.cards[i]&&ai.cards[i]!=='X');
+  const allKnown=activeSlots.every(i=>ai.known[i]);
+  const total=allKnown?activeSlots.reduce((s,i)=>s+pts(ai.known[i]),0):Infinity;
+  if(!g.cambio&&allKnown&&total<=5&&Math.random()<0.55){
     g.cambio=true; g.cambioWho=g.cur;
     addLog(g,`${ai.name} קרא קמביו!`);
     setSt(g,`${ai.name} קרא קמביו!`,'cambio-flash');

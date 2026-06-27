@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#0f172a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="קמביו">
+<link rel="apple-touch-icon" href="/icon.svg">
 <title>קמביו — משחק קלפים אונליין</title>
 <meta name="description" content="שחק קמביו אונליין נגד חברים או נגד AI. משחק קלפים מרובה משתתפים בחינם — ללא הורדה.">
 <meta name="keywords" content="קמביו, משחק קלפים, קמביו אונליין, Cambio, card game">
@@ -116,6 +118,16 @@ input:focus{border-color:#5048d4}
 .rules-box p{font-size:13px;color:#888;line-height:1.8}
 .rules-box b{color:#aaa}
 
+/* Install modal */
+.install-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;align-items:flex-end;justify-content:center}
+.install-modal.on{display:flex}
+.install-box{background:#1a1a2e;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:420px;border-top:1px solid #2a2a4a}
+.install-box h3{font-size:18px;margin-bottom:6px;color:#fff}
+.install-box .sub{margin-bottom:18px;font-size:13px}
+.install-step{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;font-size:14px;color:#ccc;line-height:1.5}
+.install-step .num{background:#5048d4;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px}
+.install-icon{font-size:20px}
+
 .card.being-peeked{border:2px solid #f59e0b !important;animation:peekGlow 0.9s ease infinite}
 @keyframes peekGlow{0%,100%{border-color:#f59e0b}50%{border-color:#fcd34d;box-shadow:0 0 10px rgba(251,191,36,0.45)}}
 .card.empty-slot{opacity:0.12;pointer-events:none;cursor:default}
@@ -142,6 +154,7 @@ input:focus{border-color:#5048d4}
       <button class="btn" onclick="showJoin()">🔗 הצטרף לחדר</button>
     </div>
     <button class="btn" onclick="location.href='/solo.html'" style="opacity:0.7;font-size:14px">📴 שחק ללא אינטרנט</button>
+    <button class="btn" onclick="showInstallGuide()" style="opacity:0.7;font-size:14px">📲 הוסף למסך הבית</button>
     <div class="rules-box">
       <p>
         <b>7/8</b> = הצץ לקלף שלך &nbsp;|&nbsp; <b>9/10</b> = הצץ לקלף יריב<br>
@@ -607,6 +620,50 @@ function showToast(msg,ms=1600){
 
 showHome();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+
+function showInstallGuide(){
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid=/android/i.test(navigator.userAgent);
+  let sub, steps;
+  if(isIOS){
+    sub='באייפון / אייפד:';
+    steps=[
+      ['📤','לחץ על כפתור השיתוף בתחתית הדפדפן (הריבוע עם החץ למעלה)'],
+      ['📜','גלול מטה ובחר <b>"הוסף למסך הבית"</b>'],
+      ['✅','לחץ <b>"הוסף"</b> — האייקון יופיע על המסך!'],
+    ];
+  } else if(isAndroid){
+    sub='באנדרואיד (Chrome):';
+    steps=[
+      ['⋮','לחץ על תפריט שלוש הנקודות בפינה הימנית העליונה'],
+      ['📲','בחר <b>"הוסף למסך הבית"</b>'],
+      ['✅','לחץ <b>"הוסף"</b> — האייקון יופיע על המסך!'],
+    ];
+  } else {
+    sub='בדפדפן מחשב (Chrome):';
+    steps=[
+      ['🔗','בשורת הכתובת לחץ על הסמל ⊕ בצד ימין'],
+      ['✅','בחר <b>"התקן"</b> — האפליקציה תיפתח כחלון נפרד'],
+    ];
+  }
+  document.getElementById('install-sub').textContent=sub;
+  document.getElementById('install-steps').innerHTML=steps.map(([icon,text])=>
+    `<div class="install-step"><div class="num">${['1','2','3'][steps.indexOf?steps.indexOf([icon,text]):0]||'✓'}</div><span class="install-icon">${icon}</span><span>${text}</span></div>`
+  ).join('');
+  // fix numbering
+  document.querySelectorAll('#install-steps .num').forEach((el,i)=>el.textContent=i+1);
+  document.getElementById('install-modal').classList.add('on');
+}
 </script>
+
+<!-- Install guide modal -->
+<div class="install-modal" id="install-modal" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="install-box">
+    <h3>📲 הוסף למסך הבית</h3>
+    <p class="sub" id="install-sub"></p>
+    <div id="install-steps"></div>
+    <button class="btn primary" onclick="document.getElementById('install-modal').classList.remove('on')" style="margin-top:8px">הבנתי!</button>
+  </div>
+</div>
 </body>
 </html>
